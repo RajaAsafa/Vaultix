@@ -86,8 +86,10 @@ export const VaultListScreen: React.FC = () => {
         case 'za':
           return b.accountName.localeCompare(a.accountName);
         case 'weakest': {
-          const scoreA = checkPasswordStrength(a.password).score;
-          const scoreB = checkPasswordStrength(b.password).score;
+          const secretA = a.authType === 'pin' ? (a.pin || a.password || '') : (a.password || '');
+          const secretB = b.authType === 'pin' ? (b.pin || b.password || '') : (b.password || '');
+          const scoreA = a.authType === 'pin' ? (secretA.length >= 6 ? 3 : 1) : checkPasswordStrength(secretA).score;
+          const scoreB = b.authType === 'pin' ? (secretB.length >= 6 ? 3 : 1) : checkPasswordStrength(secretB).score;
           return scoreA - scoreB;
         }
         case 'newest':

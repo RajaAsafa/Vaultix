@@ -10,6 +10,7 @@ export interface AccountRecord {
   email_encrypted: Uint8Array | null;
   password_encrypted: Uint8Array;
   pin_encrypted?: Uint8Array | null;
+  auth_type?: 'password' | 'pin';
   category_id: string | null;
   notes_encrypted: Uint8Array | null;
   is_favorite: number; // 0 or 1
@@ -20,9 +21,10 @@ export interface AccountRecord {
 export interface DecryptedAccount {
   id: string;
   accountName: string;
+  authType: 'password' | 'pin';
   username?: string;
   email?: string;
-  password: string;
+  password?: string;
   pin?: string;
   categoryId?: string | null;
   notes?: string;

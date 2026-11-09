@@ -77,13 +77,16 @@ export const useVaultStore = create<VaultState>((set, get) => ({
             ? await decryptAesGcm(new Uint8Array(record.pin_encrypted), vek)
             : undefined;
 
+          const authType = (record.auth_type === 'pin' ? 'pin' : 'password') as 'password' | 'pin';
+
           decryptedAccounts.push({
             id: record.id,
             accountName,
+            authType,
             username,
             email,
             password,
-            pin,
+            pin: pin || (authType === 'pin' ? password : undefined),
             categoryId: record.category_id,
             notes,
             isFavorite: record.is_favorite === 1,
@@ -110,12 +113,15 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     const id = 'acc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
     const now = new Date().toISOString();
 
+    const authType = data.authType || (data.pin && !data.password ? 'pin' : 'password');
+    const secret = authType === 'pin' ? (data.pin || '') : (data.password || '');
+
     const accountNameEncrypted = await encryptAesGcm(data.accountName, vek);
-    const passwordEncrypted = await encryptAesGcm(data.password, vek);
+    const passwordEncrypted = await encryptAesGcm(secret, vek);
+    const pinEncrypted = data.pin ? await encryptAesGcm(data.pin, vek) : (authType === 'pin' ? passwordEncrypted : null);
     const usernameEncrypted = data.username ? await encryptAesGcm(data.username, vek) : null;
     const emailEncrypted = data.email ? await encryptAesGcm(data.email, vek) : null;
     const notesEncrypted = data.notes ? await encryptAesGcm(data.notes, vek) : null;
-    const pinEncrypted = data.pin ? await encryptAesGcm(data.pin, vek) : null;
 
     const record: AccountRecord = {
       id,
@@ -124,6 +130,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       email_encrypted: emailEncrypted,
       password_encrypted: passwordEncrypted,
       pin_encrypted: pinEncrypted,
+      auth_type: authType,
       category_id: data.categoryId || null,
       notes_encrypted: notesEncrypted,
       is_favorite: 0,
@@ -136,10 +143,11 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     const newDecrypted: DecryptedAccount = {
       id,
       accountName: data.accountName,
+      authType,
       username: data.username,
       email: data.email,
-      password: data.password,
-      pin: data.pin,
+      password: authType === 'password' ? data.password : undefined,
+      pin: authType === 'pin' ? data.pin : undefined,
       categoryId: data.categoryId,
       notes: data.notes,
       isFavorite: false,
@@ -154,12 +162,15 @@ export const useVaultStore = create<VaultState>((set, get) => ({
 
   updateAccount: async (account, vek) => {
     const now = new Date().toISOString();
+    const authType = account.authType || (account.pin && !account.password ? 'pin' : 'password');
+    const secret = authType === 'pin' ? (account.pin || '') : (account.password || '');
 
-    // Check if password changed, if so save old password to history
+    // Check if secret changed, if so save old secret to history
     const existing = get().accounts.find((a) => a.id === account.id);
-    if (existing && existing.password !== account.password) {
+    const existingSecret = existing?.authType === 'pin' ? existing?.pin : existing?.password;
+    if (existing && existingSecret && existingSecret !== secret) {
       try {
-        const oldEncrypted = await encryptAesGcm(existing.password, vek);
+        const oldEncrypted = await encryptAesGcm(existingSecret, vek);
         await AccountRepository.addPasswordHistory(account.id, oldEncrypted);
       } catch {
         // history save shouldn't block primary update
@@ -167,11 +178,11 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     }
 
     const accountNameEncrypted = await encryptAesGcm(account.accountName, vek);
-    const passwordEncrypted = await encryptAesGcm(account.password, vek);
+    const passwordEncrypted = await encryptAesGcm(secret, vek);
+    const pinEncrypted = account.pin ? await encryptAesGcm(account.pin, vek) : (authType === 'pin' ? passwordEncrypted : null);
     const usernameEncrypted = account.username ? await encryptAesGcm(account.username, vek) : null;
     const emailEncrypted = account.email ? await encryptAesGcm(account.email, vek) : null;
     const notesEncrypted = account.notes ? await encryptAesGcm(account.notes, vek) : null;
-    const pinEncrypted = account.pin ? await encryptAesGcm(account.pin, vek) : null;
 
     const record: AccountRecord = {
       id: account.id,
@@ -180,6 +191,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       email_encrypted: emailEncrypted,
       password_encrypted: passwordEncrypted,
       pin_encrypted: pinEncrypted,
+      auth_type: authType,
       category_id: account.categoryId || null,
       notes_encrypted: notesEncrypted,
       is_favorite: account.isFavorite ? 1 : 0,
@@ -191,7 +203,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
 
     set((state) => ({
       accounts: state.accounts.map((acc) =>
-        acc.id === account.id ? { ...account, updatedAt: now } : acc
+        acc.id === account.id ? { ...account, authType, updatedAt: now } : acc
       ),
     }));
   },

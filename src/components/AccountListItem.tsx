@@ -22,9 +22,12 @@ export const AccountListItem: React.FC<AccountListItemProps> = ({
   onToggleFavorite,
   onCopiedToast,
 }) => {
-  const handleCopyPassword = async () => {
-    await copyToClipboardWithAutoClear(account.password, clipboardTimeout);
-    onCopiedToast?.(`Password disalin! Dibersihkan dlm ${clipboardTimeout}d`);
+  const isPin = account.authType === 'pin';
+  const secretToCopy = isPin ? (account.pin || account.password || '') : (account.password || '');
+
+  const handleCopySecret = async () => {
+    await copyToClipboardWithAutoClear(secretToCopy, clipboardTimeout);
+    onCopiedToast?.(`${isPin ? 'PIN' : 'Password'} disalin! Dibersihkan dlm ${clipboardTimeout}d`);
   };
 
   const subtitle = account.username || account.email || 'Tanpa username/email';
@@ -39,7 +42,10 @@ export const AccountListItem: React.FC<AccountListItemProps> = ({
         <View style={styles.iconContainer}>
           <Ionicons
             color={Colors.accent}
-            name={(category?.icon as unknown as keyof typeof Ionicons.glyphMap) || 'key-outline'}
+            name={
+              (category?.icon as unknown as keyof typeof Ionicons.glyphMap) ||
+              (isPin ? 'keypad-outline' : 'key-outline')
+            }
             size={22}
           />
         </View>
@@ -49,6 +55,11 @@ export const AccountListItem: React.FC<AccountListItemProps> = ({
             <Text numberOfLines={1} style={styles.accountName}>
               {account.accountName}
             </Text>
+            {isPin && (
+              <View style={styles.pinBadge}>
+                <Text style={styles.pinBadgeText}>PIN</Text>
+              </View>
+            )}
             {category && (
               <View style={styles.categoryBadge}>
                 <Text style={styles.categoryText}>{category.name}</Text>
@@ -65,7 +76,7 @@ export const AccountListItem: React.FC<AccountListItemProps> = ({
         <TouchableOpacity
           hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
           style={styles.actionButton}
-          onPress={handleCopyPassword}
+          onPress={handleCopySecret}
         >
           <Ionicons color={Colors.textSecondary} name="copy-outline" size={18} />
         </TouchableOpacity>
@@ -126,6 +137,19 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.md,
     fontWeight: Typography.weights.semibold,
     flexShrink: 1,
+  },
+  pinBadge: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    borderWidth: 1,
+    borderColor: Colors.accent,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  pinBadgeText: {
+    color: Colors.accent,
+    fontSize: 9,
+    fontWeight: Typography.weights.bold,
   },
   categoryBadge: {
     backgroundColor: Colors.secondary,

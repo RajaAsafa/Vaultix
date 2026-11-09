@@ -46,11 +46,20 @@ export const HomeScreen: React.FC = () => {
   const passwordMap = new Map<string, number>();
 
   for (const acc of accounts) {
-    const strength = checkPasswordStrength(acc.password);
-    if (strength.level === 'Weak') {
-      weakCount++;
+    const isPin = acc.authType === 'pin';
+    const secret = isPin ? (acc.pin || acc.password || '') : (acc.password || '');
+
+    if (isPin) {
+      if (secret.length < 6) weakCount++;
+    } else {
+      const strength = checkPasswordStrength(secret);
+      if (strength.level === 'Weak') {
+        weakCount++;
+      }
     }
-    passwordMap.set(acc.password, (passwordMap.get(acc.password) ?? 0) + 1);
+    if (secret) {
+      passwordMap.set(secret, (passwordMap.get(secret) ?? 0) + 1);
+    }
   }
 
   let duplicateCount = 0;

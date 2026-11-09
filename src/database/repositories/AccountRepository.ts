@@ -22,9 +22,9 @@ export class AccountRepository {
     await db.runAsync(
       `INSERT INTO accounts (
         id, account_name_encrypted, username_encrypted, email_encrypted,
-        password_encrypted, pin_encrypted, category_id, notes_encrypted, is_favorite,
+        password_encrypted, pin_encrypted, auth_type, category_id, notes_encrypted, is_favorite,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
       [
         account.id,
         account.account_name_encrypted,
@@ -32,6 +32,7 @@ export class AccountRepository {
         account.email_encrypted,
         account.password_encrypted,
         account.pin_encrypted ?? null,
+        account.auth_type ?? 'password',
         account.category_id,
         account.notes_encrypted,
         account.is_favorite,
@@ -50,6 +51,7 @@ export class AccountRepository {
         email_encrypted = ?,
         password_encrypted = ?,
         pin_encrypted = ?,
+        auth_type = ?,
         category_id = ?,
         notes_encrypted = ?,
         is_favorite = ?,
@@ -61,6 +63,7 @@ export class AccountRepository {
         account.email_encrypted,
         account.password_encrypted,
         account.pin_encrypted ?? null,
+        account.auth_type ?? 'password',
         account.category_id,
         account.notes_encrypted,
         account.is_favorite,

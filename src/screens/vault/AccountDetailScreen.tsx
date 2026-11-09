@@ -77,7 +77,7 @@ export const AccountDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   }
 
   const category = categories.find((c) => c.id === account.categoryId);
-  const strength = checkPasswordStrength(account.password);
+  const strength = checkPasswordStrength(account.password || '');
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -193,80 +193,81 @@ export const AccountDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           </VaultCard>
         )}
 
-        {/* Password */}
-        <VaultCard>
-          <Text style={styles.fieldLabel}>Password</Text>
-          <View style={styles.fieldRow}>
-            <Text style={[styles.fieldValue, !showPassword && styles.passwordMasked]}>
-              {showPassword ? account.password : '••••••••••••••••'}
-            </Text>
-            <View style={styles.passwordActions}>
-              <TouchableOpacity
-                style={styles.copyBtn}
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                <Ionicons
-                  color={Colors.textSecondary}
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={20}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.copyBtn}
-                onPress={() => handleCopy(account.password, 'Password')}
-              >
-                <Ionicons color={Colors.accent} name="copy-outline" size={20} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Strength info */}
-          <View style={styles.strengthRow}>
-            <Text style={styles.strengthLabel}>Kekuatan: </Text>
-            <Text
-              style={{
-                color:
-                  strength.level === 'Very Strong' || strength.level === 'Strong'
-                    ? Colors.success
-                    : strength.level === 'Medium'
-                    ? Colors.warning
-                    : Colors.error,
-                fontWeight: Typography.weights.semibold,
-                fontSize: Typography.sizes.xs,
-              }}
-            >
-              {strength.level}
-            </Text>
-          </View>
-        </VaultCard>
-
-        {/* PIN / Security Code */}
-        {account.pin && (
+        {/* Credential Card: Password OR PIN */}
+        {account.authType === 'pin' ? (
           <VaultCard>
-            <Text style={styles.fieldLabel}>PIN / KODE KEAMANAN</Text>
+            <Text style={styles.fieldLabel}>PIN KEAMANAN</Text>
             <View style={styles.fieldRow}>
-              <Text style={[styles.fieldValue, !showPin && styles.passwordMasked]}>
-                {showPin ? account.pin : '••••••••'}
+              <Text style={[styles.fieldValue, !showPassword && styles.passwordMasked]}>
+                {showPassword ? (account.pin || account.password) : '••••••••'}
               </Text>
               <View style={styles.passwordActions}>
                 <TouchableOpacity
                   style={styles.copyBtn}
-                  onPress={() => setShowPin(!showPin)}
+                  onPress={() => setShowPassword(!showPassword)}
                 >
                   <Ionicons
                     color={Colors.textSecondary}
-                    name={showPin ? 'eye-off-outline' : 'eye-outline'}
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                     size={20}
                   />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.copyBtn}
-                  onPress={() => handleCopy(account.pin!, 'PIN')}
+                  onPress={() => handleCopy(account.pin || account.password || '', 'PIN')}
                 >
                   <Ionicons color={Colors.accent} name="copy-outline" size={20} />
                 </TouchableOpacity>
               </View>
             </View>
+          </VaultCard>
+        ) : (
+          <VaultCard>
+            <Text style={styles.fieldLabel}>Password</Text>
+            <View style={styles.fieldRow}>
+              <Text style={[styles.fieldValue, !showPassword && styles.passwordMasked]}>
+                {showPassword ? account.password : '••••••••••••••••'}
+              </Text>
+              <View style={styles.passwordActions}>
+                <TouchableOpacity
+                  style={styles.copyBtn}
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <Ionicons
+                    color={Colors.textSecondary}
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.copyBtn}
+                  onPress={() => handleCopy(account.password || '', 'Password')}
+                >
+                  <Ionicons color={Colors.accent} name="copy-outline" size={20} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Strength info */}
+            {account.password ? (
+              <View style={styles.strengthRow}>
+                <Text style={styles.strengthLabel}>Kekuatan: </Text>
+                <Text
+                  style={{
+                    color:
+                      strength.level === 'Very Strong' || strength.level === 'Strong'
+                        ? Colors.success
+                        : strength.level === 'Medium'
+                        ? Colors.warning
+                        : Colors.error,
+                    fontWeight: Typography.weights.semibold,
+                    fontSize: Typography.sizes.xs,
+                  }}
+                >
+                  {strength.level}
+                </Text>
+              </View>
+            ) : null}
           </VaultCard>
         )}
 
@@ -281,7 +282,7 @@ export const AccountDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               <View style={styles.historyTitleRow}>
                 <Ionicons color={Colors.textSecondary} name="time-outline" size={18} />
                 <Text style={styles.historyTitle}>
-                  Riwayat Password Lama ({historyList.length})
+                  {account.authType === 'pin' ? 'Riwayat PIN Lama' : 'Riwayat Password Lama'} ({historyList.length})
                 </Text>
               </View>
               <Ionicons

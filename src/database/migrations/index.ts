@@ -92,6 +92,16 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 3,
+    name: 'add_auth_type_column',
+    up: async (db) => {
+      await db.execAsync(`
+        -- Add auth_type column to accounts ('password' or 'pin')
+        ALTER TABLE accounts ADD COLUMN auth_type TEXT DEFAULT 'password';
+      `);
+    },
+  },
 ];
 
 export async function runMigrations(): Promise<void> {

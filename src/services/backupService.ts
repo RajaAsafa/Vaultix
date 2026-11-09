@@ -189,9 +189,9 @@ export class BackupService {
         await db.runAsync(
           `INSERT INTO accounts (
              id, account_name_encrypted, username_encrypted, email_encrypted,
-             password_encrypted, pin_encrypted, category_id, notes_encrypted, is_favorite,
+             password_encrypted, pin_encrypted, auth_type, category_id, notes_encrypted, is_favorite,
              created_at, updated_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
           [
             acc.id,
             base64ToUint8Array(acc.account_name_encrypted),
@@ -199,6 +199,7 @@ export class BackupService {
             acc.email_encrypted ? base64ToUint8Array(acc.email_encrypted) : null,
             base64ToUint8Array(acc.password_encrypted),
             acc.pin_encrypted ? base64ToUint8Array(acc.pin_encrypted) : null,
+            acc.auth_type ?? 'password',
             acc.category_id,
             acc.notes_encrypted ? base64ToUint8Array(acc.notes_encrypted) : null,
             acc.is_favorite,

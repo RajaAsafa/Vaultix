@@ -32,6 +32,18 @@ const SYMBOL_CHARS = '!@#$%^&*()_+-=[]{}|;:,.<>?';
 const AMBIGUOUS_CHARS = new Set(['O', '0', 'I', 'l', '1', '|', 'B', '8', '`', '\'', '"']);
 
 /**
+ * Generates a cryptographically random numeric PIN (default 6 digits).
+ */
+export function generatePin(length: number = 6): string {
+  const randomBytes = generateRandomBytes(length);
+  let pin = '';
+  for (let i = 0; i < length; i++) {
+    pin += (randomBytes[i] % 10).toString();
+  }
+  return pin;
+}
+
+/**
  * Generates a cryptographically random password matching user options.
  */
 export function generatePassword(options: GeneratorOptions = DEFAULT_GENERATOR_OPTIONS): string {

@@ -28,23 +28,37 @@ export const SecurityDashboardScreen: React.FC = () => {
   const passwordUsageMap = new Map<string, string[]>();
 
   for (const acc of accounts) {
-    const analysis = checkPasswordStrength(acc.password);
-    if (analysis.level === 'Weak') {
-      weakAccounts.push(acc);
-    } else if (analysis.level === 'Medium') {
-      mediumAccounts.push(acc);
+    const isPin = acc.authType === 'pin';
+    const secret = isPin ? (acc.pin || acc.password || '') : (acc.password || '');
+
+    if (isPin) {
+      if (secret.length < 6) {
+        weakAccounts.push(acc);
+      } else {
+        strongAccounts.push(acc);
+      }
     } else {
-      strongAccounts.push(acc);
+      const analysis = checkPasswordStrength(secret);
+      if (analysis.level === 'Weak') {
+        weakAccounts.push(acc);
+      } else if (analysis.level === 'Medium') {
+        mediumAccounts.push(acc);
+      } else {
+        strongAccounts.push(acc);
+      }
     }
 
-    const currentList = passwordUsageMap.get(acc.password) ?? [];
-    currentList.push(acc.id);
-    passwordUsageMap.set(acc.password, currentList);
+    if (secret) {
+      const currentList = passwordUsageMap.get(secret) ?? [];
+      currentList.push(acc.id);
+      passwordUsageMap.set(secret, currentList);
+    }
   }
 
-  const duplicateAccounts = accounts.filter(
-    (acc) => (passwordUsageMap.get(acc.password)?.length ?? 0) > 1
-  );
+  const duplicateAccounts = accounts.filter((acc) => {
+    const secret = acc.authType === 'pin' ? (acc.pin || acc.password || '') : (acc.password || '');
+    return (passwordUsageMap.get(secret)?.length ?? 0) > 1;
+  });
 
   // Group duplicate accounts by identical password
   const duplicateGroups: { password: string; accounts: typeof accounts }[] = [];

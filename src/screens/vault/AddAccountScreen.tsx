@@ -17,13 +17,18 @@ import { VaultInput } from '../../components/VaultInput';
 import { VaultButton } from '../../components/VaultButton';
 import { useVaultStore } from '../../store/vaultStore';
 import { useAuthStore } from '../../store/authStore';
-import { generatePassword, checkPasswordStrength } from '../../security/generator';
+import {
+  generatePassword,
+  generatePin,
+  checkPasswordStrength,
+} from '../../security/generator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddAccount'>;
 
 export const AddAccountScreen: React.FC<Props> = ({ navigation, route }) => {
   const initialCategoryId = route.params?.categoryId;
 
+  const [authType, setAuthType] = useState<'password' | 'pin'>('password');
   const [accountName, setAccountName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -36,6 +41,7 @@ export const AddAccountScreen: React.FC<Props> = ({ navigation, route }) => {
   // Inline red errors instead of popups
   const [accountNameError, setAccountNameError] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [pinError, setPinError] = useState('');
   const [emailError, setEmailError] = useState('');
   const [submitError, setSubmitError] = useState('');
 
@@ -58,6 +64,12 @@ export const AddAccountScreen: React.FC<Props> = ({ navigation, route }) => {
     if (passwordError) setPasswordError('');
   };
 
+  const handleGeneratePin = () => {
+    const generated = generatePin(6);
+    setPin(generated);
+    if (pinError) setPinError('');
+  };
+
   const handleSave = async () => {
     let hasError = false;
 
@@ -68,11 +80,23 @@ export const AddAccountScreen: React.FC<Props> = ({ navigation, route }) => {
       setAccountNameError('');
     }
 
-    if (!password) {
-      setPasswordError('Password akun wajib diisi');
-      hasError = true;
+    if (authType === 'password') {
+      if (!password || password.trim().length === 0) {
+        setPasswordError('Password akun wajib diisi');
+        hasError = true;
+      } else {
+        setPasswordError('');
+      }
     } else {
-      setPasswordError('');
+      if (!pin || pin.trim().length === 0) {
+        setPinError('PIN akun wajib diisi');
+        hasError = true;
+      } else if (pin.trim().length < 4) {
+        setPinError('PIN minimal 4 digit angka');
+        hasError = true;
+      } else {
+        setPinError('');
+      }
     }
 
     if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
@@ -95,10 +119,11 @@ export const AddAccountScreen: React.FC<Props> = ({ navigation, route }) => {
       await addAccount(
         {
           accountName: accountName.trim(),
+          authType,
           username: username.trim() || undefined,
           email: email.trim() || undefined,
-          password,
-          pin: pin.trim() || undefined,
+          password: authType === 'password' ? password : pin.trim(),
+          pin: authType === 'pin' ? pin.trim() : undefined,
           categoryId,
           notes: notes.trim() || undefined,
         },
@@ -174,56 +199,131 @@ export const AddAccountScreen: React.FC<Props> = ({ navigation, route }) => {
             }}
           />
 
-          {/* Password */}
-          <VaultInput
-            isPassword
-            error={passwordError}
-            label="Password *"
-            placeholder="Masukkan atau buat password"
-            rightAction={
-              <TouchableOpacity
-                style={styles.generateBtn}
-                onPress={handleGeneratePassword}
+          {/* Security Credential Type Selector */}
+          <Text style={styles.categoryLabel}>Tipe Keamanan</Text>
+          <View style={styles.authTypeRow}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[
+                styles.authTypeTab,
+                authType === 'password' && styles.authTypeTabActive,
+              ]}
+              onPress={() => {
+                setAuthType('password');
+                setPasswordError('');
+                setPinError('');
+              }}
+            >
+              <Ionicons
+                color={authType === 'password' ? Colors.accent : Colors.textSecondary}
+                name="key-outline"
+                size={18}
+              />
+              <Text
+                style={[
+                  styles.authTypeText,
+                  authType === 'password' && styles.authTypeTextActive,
+                ]}
               >
-                <Ionicons color={Colors.accent} name="flash" size={18} />
-                <Text style={styles.generateBtnText}>Acak</Text>
-              </TouchableOpacity>
-            }
-            value={password}
-            onChangeText={(txt) => {
-              setPassword(txt);
-              if (passwordError) setPasswordError('');
-            }}
-          />
-
-          {password.length > 0 && (
-            <View style={styles.strengthBox}>
-              <Text style={styles.strengthLabel}>
-                Kekuatan:{' '}
-                <Text
-                  style={{
-                    color:
-                      strength.level === 'Very Strong' || strength.level === 'Strong'
-                        ? Colors.success
-                        : strength.level === 'Medium'
-                        ? Colors.warning
-                        : Colors.error,
-                  }}
-                >
-                  {strength.level}
-                </Text>
+                Password
               </Text>
-            </View>
-          )}
+            </TouchableOpacity>
 
-          {/* PIN / Security Code */}
-          <VaultInput
-            isPassword
-            label="PIN / Kode Keamanan (Opsional)"
-            placeholder="contoh: PIN ATM, PIN e-Wallet 6 digit"
-            value={pin}
-            onChangeText={setPin}
-          />
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[
+                styles.authTypeTab,
+                authType === 'pin' && styles.authTypeTabActive,
+              ]}
+              onPress={() => {
+                setAuthType('pin');
+                setPasswordError('');
+                setPinError('');
+              }}
+            >
+              <Ionicons
+                color={authType === 'pin' ? Colors.accent : Colors.textSecondary}
+                name="keypad-outline"
+                size={18}
+              />
+              <Text
+                style={[
+                  styles.authTypeText,
+                  authType === 'pin' && styles.authTypeTextActive,
+                ]}
+              >
+                PIN
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Conditional Credential Input */}
+          {authType === 'password' ? (
+            <>
+              <VaultInput
+                isPassword
+                error={passwordError}
+                label="Password *"
+                placeholder="Masukkan atau buat password"
+                rightAction={
+                  <TouchableOpacity
+                    style={styles.generateBtn}
+                    onPress={handleGeneratePassword}
+                  >
+                    <Ionicons color={Colors.accent} name="flash" size={18} />
+                    <Text style={styles.generateBtnText}>Acak</Text>
+                  </TouchableOpacity>
+                }
+                value={password}
+                onChangeText={(txt) => {
+                  setPassword(txt);
+                  if (passwordError) setPasswordError('');
+                }}
+              />
+
+              {password.length > 0 && (
+                <View style={styles.strengthBox}>
+                  <Text style={styles.strengthLabel}>
+                    Kekuatan:{' '}
+                    <Text
+                      style={{
+                        color:
+                          strength.level === 'Very Strong' || strength.level === 'Strong'
+                            ? Colors.success
+                            : strength.level === 'Medium'
+                            ? Colors.warning
+                            : Colors.error,
+                      }}
+                    >
+                      {strength.level}
+                    </Text>
+                  </Text>
+                </View>
+              )}
+            </>
+          ) : (
+            <VaultInput
+              isPassword
+              error={pinError}
+              keyboardType="numeric"
+              label="PIN Keamanan *"
+              placeholder="Masukkan 4-8 digit angka PIN"
+              rightAction={
+                <TouchableOpacity
+                  style={styles.generateBtn}
+                  onPress={handleGeneratePin}
+                >
+                  <Ionicons color={Colors.accent} name="flash" size={18} />
+                  <Text style={styles.generateBtnText}>Acak PIN</Text>
+                </TouchableOpacity>
+              }
+              value={pin}
+              onChangeText={(txt) => {
+                setPin(txt);
+                if (pinError) setPinError('');
+              }}
+            />
+          )}
 
           {/* Category Picker */}
           <Text style={styles.categoryLabel}>Pilih Kategori (Opsional)</Text>
@@ -346,6 +446,36 @@ const styles = StyleSheet.create({
   strengthLabel: {
     color: Colors.textSecondary,
     fontSize: Typography.sizes.xs,
+  },
+  authTypeRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  authTypeTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    paddingVertical: Spacing.sm,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+  },
+  authTypeTabActive: {
+    borderColor: Colors.accent,
+    backgroundColor: Colors.secondary,
+  },
+  authTypeText: {
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.medium,
+  },
+  authTypeTextActive: {
+    color: Colors.accent,
+    fontWeight: Typography.weights.semibold,
   },
   categoryLabel: {
     color: Colors.textSecondary,
