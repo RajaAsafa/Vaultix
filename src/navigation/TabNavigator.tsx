@@ -1,5 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { MainTabParamList } from '../types';
 import { Colors } from '../constants/theme';
@@ -12,6 +13,11 @@ import { SettingsScreen } from '../screens/settings/SettingsScreen';
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export const TabNavigator: React.FC = () => {
+  const insets = useSafeAreaInsets();
+  // Ensure comfortable bottom spacing above Android navigation / gesture bar
+  const bottomPadding = insets.bottom > 0 ? insets.bottom + 8 : 18;
+  const barHeight = 56 + bottomPadding;
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -19,9 +25,13 @@ export const TabNavigator: React.FC = () => {
         tabBarStyle: {
           backgroundColor: Colors.background,
           borderTopColor: Colors.border,
-          height: 60,
-          paddingBottom: 8,
+          height: barHeight,
+          paddingBottom: bottomPadding,
           paddingTop: 8,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '500',
         },
         tabBarActiveTintColor: Colors.accent,
         tabBarInactiveTintColor: Colors.textMuted,
