@@ -1,7 +1,11 @@
 /**
  * AES-256-GCM Cipher Module
  * Formats: Pure binary BLOB [12B IV][16B Auth Tag][Ciphertext]
+ * Uses @noble/ciphers/aes for robust, cross-platform AEAD without WebCrypto runtime dependency.
  */
+
+import { gcm } from '@noble/ciphers/aes.js';
+import { generateRandomBytes } from './kdf';
 
 const IV_LENGTH = 12; // 96 bits recommended for AES-GCM
 const TAG_LENGTH = 16; // 128 bits authentication tag
@@ -49,39 +53,18 @@ export async function encryptAesGcm(
     throw new Error('Invalid key length: AES-256 requires a 32-byte key');
   }
 
-  // Generate 12-byte cryptographically secure random IV
-  const iv = new Uint8Array(IV_LENGTH);
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    crypto.getRandomValues(iv);
-  } else {
-    throw new Error('Cryptographically secure PRNG is not available in environment');
-  }
+  // 12-byte cryptographically secure random IV from native Android SecureRandom
+  const iv = generateRandomBytes(IV_LENGTH);
 
+  const cipher = gcm(keyBytes, iv);
   const encoder = new TextEncoder();
   const data = encoder.encode(plaintext);
 
-  const cryptoKey = await crypto.subtle.importKey(
-    'raw',
-    keyBytes as unknown as BufferSource,
-    { name: 'AES-GCM' },
-    false,
-    ['encrypt']
-  );
+  // gcm.encrypt appends the 16-byte tag to the ciphertext
+  const encrypted = cipher.encrypt(data);
 
-  // WebCrypto encrypt returns ciphertext with the 16-byte tag appended at the end
-  const encryptedBuffer = await crypto.subtle.encrypt(
-    {
-      name: 'AES-GCM',
-      iv: iv as unknown as BufferSource,
-      tagLength: 128,
-    },
-    cryptoKey,
-    data as unknown as BufferSource
-  );
-
-  const encryptedBytes = new Uint8Array(encryptedBuffer);
-  const ciphertext = encryptedBytes.slice(0, encryptedBytes.length - TAG_LENGTH);
-  const tag = encryptedBytes.slice(encryptedBytes.length - TAG_LENGTH);
+  const ciphertext = encrypted.slice(0, encrypted.length - TAG_LENGTH);
+  const tag = encrypted.slice(encrypted.length - TAG_LENGTH);
 
   return packCipherBlob(iv, tag, ciphertext);
 }
@@ -100,29 +83,14 @@ export async function decryptAesGcm(
 
   const { iv, tag, ciphertext } = unpackCipherBlob(packedBlob);
 
-  const cryptoKey = await crypto.subtle.importKey(
-    'raw',
-    keyBytes as unknown as BufferSource,
-    { name: 'AES-GCM' },
-    false,
-    ['decrypt']
-  );
-
-  // WebCrypto expects [ciphertext + tag] as input to decrypt
+  // Combine [ciphertext + tag] for @noble/ciphers/aes decrypt
   const combined = new Uint8Array(ciphertext.length + TAG_LENGTH);
   combined.set(ciphertext, 0);
   combined.set(tag, ciphertext.length);
 
-  const decryptedBuffer = await crypto.subtle.decrypt(
-    {
-      name: 'AES-GCM',
-      iv: iv as unknown as BufferSource,
-      tagLength: 128,
-    },
-    cryptoKey,
-    combined as unknown as BufferSource
-  );
+  const decipher = gcm(keyBytes, iv);
+  const decryptedBytes = decipher.decrypt(combined);
 
   const decoder = new TextDecoder();
-  return decoder.decode(decryptedBuffer);
+  return decoder.decode(decryptedBytes);
 }

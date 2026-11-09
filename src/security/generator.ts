@@ -4,6 +4,7 @@
  */
 
 import { PasswordStrengthLevel, PasswordStrengthResult } from '../types';
+import { generateRandomBytes } from './kdf';
 
 export interface GeneratorOptions {
   length: number; // 8 - 64
@@ -73,12 +74,7 @@ export function generatePassword(options: GeneratorOptions = DEFAULT_GENERATOR_O
   const remainingCount = length - guaranteedChars.length;
   const resultChars: string[] = [...guaranteedChars];
 
-  const randomBytes = new Uint8Array(remainingCount);
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    crypto.getRandomValues(randomBytes);
-  } else {
-    throw new Error('CSPRNG not available');
-  }
+  const randomBytes = generateRandomBytes(remainingCount);
 
   for (let i = 0; i < remainingCount; i++) {
     const randomIndex = randomBytes[i] % charPool.length;
@@ -90,14 +86,12 @@ export function generatePassword(options: GeneratorOptions = DEFAULT_GENERATOR_O
 }
 
 function getRandomChar(str: string): string {
-  const bytes = new Uint8Array(1);
-  crypto.getRandomValues(bytes);
+  const bytes = generateRandomBytes(1);
   return str[bytes[0] % str.length];
 }
 
 function shuffleArray(array: string[]): string[] {
-  const bytes = new Uint8Array(array.length);
-  crypto.getRandomValues(bytes);
+  const bytes = generateRandomBytes(array.length);
   const shuffled = [...array];
 
   for (let i = shuffled.length - 1; i > 0; i--) {
