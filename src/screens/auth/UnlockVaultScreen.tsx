@@ -13,6 +13,7 @@ export const UnlockVaultScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [hasBiometrics, setHasBiometrics] = useState(false);
+  const [localError, setLocalError] = useState('');
 
   const unlockWithPassword = useAuthStore((s) => s.unlockWithPassword);
   const unlockWithBiometrics = useAuthStore((s) => s.unlockWithBiometrics);
@@ -45,16 +46,17 @@ export const UnlockVaultScreen: React.FC = () => {
 
   const handlePasswordUnlock = async () => {
     if (!password) {
-      Alert.alert('Perhatian', 'Masukkan Master Password Anda');
+      setLocalError('Masukkan Master Password Anda');
       return;
     }
 
+    setLocalError('');
     setLoading(true);
     const success = await unlockWithPassword(password);
     setLoading(false);
 
     if (!success) {
-      Alert.alert('Gagal', 'Master Password salah. Silakan coba lagi.');
+      setLocalError('Master Password salah. Silakan coba lagi.');
     }
   };
 
@@ -88,10 +90,11 @@ export const UnlockVaultScreen: React.FC = () => {
         <View style={styles.form}>
           <VaultInput
             isPassword
-            error={errorMessage ?? undefined}
+            error={localError || (errorMessage ?? undefined)}
             placeholder="Masukkan Master Password"
             value={password}
             onChangeText={(txt) => {
+              if (localError) setLocalError('');
               if (errorMessage) clearError();
               setPassword(txt);
             }}

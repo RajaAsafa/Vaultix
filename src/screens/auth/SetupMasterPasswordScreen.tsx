@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -16,6 +23,11 @@ export const SetupMasterPasswordScreen: React.FC<Props> = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Inline red errors instead of popups
+  const [passwordError, setPasswordError] = useState('');
+  const [confirmError, setConfirmError] = useState('');
+  const [setupError, setSetupError] = useState('');
 
   const setupVault = useAuthStore((s) => s.setupVault);
 
@@ -35,21 +47,30 @@ export const SetupMasterPasswordScreen: React.FC<Props> = () => {
   };
 
   const handleCreate = async () => {
+    let hasError = false;
+
     if (password.length < 8) {
-      Alert.alert('Perhatian', 'Master Password harus terdiri dari minimal 8 karakter.');
-      return;
+      setPasswordError('Master Password harus minimal 8 karakter');
+      hasError = true;
+    } else {
+      setPasswordError('');
     }
+
     if (password !== confirmPassword) {
-      Alert.alert('Perhatian', 'Konfirmasi password tidak cocok.');
-      return;
+      setConfirmError('Konfirmasi password tidak cocok');
+      hasError = true;
+    } else {
+      setConfirmError('');
     }
+
+    if (hasError) return;
 
     try {
       setLoading(true);
+      setSetupError('');
       await setupVault(password);
     } catch (err: unknown) {
-      Alert.alert(
-        'Gagal',
+      setSetupError(
         err instanceof Error ? err.message : 'Terjadi kesalahan saat membuat brankas.'
       );
     } finally {
@@ -59,66 +80,91 @@ export const SetupMasterPasswordScreen: React.FC<Props> = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Ionicons color={Colors.accent} name="key" size={40} />
-          <Text style={styles.title}>Buat Master Password</Text>
-          <Text style={styles.subtitle}>
-            Kunci utama ini digunakan untuk mengenkripsi seluruh brankas Anda. Pastikan Anda mengingatnya dengan baik.
-          </Text>
-        </View>
-
-        <View style={styles.alertBox}>
-          <Ionicons color={Colors.warning} name="warning-outline" size={20} />
-          <Text style={styles.alertText}>
-            Tidak ada server pemulihan! Jika Anda lupa Master Password, data di dalam Vault tidak dapat dipulihkan.
-          </Text>
-        </View>
-
-        <VaultInput
-          isPassword
-          label="Master Password"
-          placeholder="Minimal 8 karakter"
-          value={password}
-          onChangeText={setPassword}
-        />
-
-        {password.length > 0 && (
-          <View style={styles.strengthContainer}>
-            <View style={styles.strengthBarBg}>
-              <View
-                style={[
-                  styles.strengthBarFill,
-                  {
-                    width: `${(strength.score / 4) * 100}%`,
-                    backgroundColor: getStrengthColor(),
-                  },
-                ]}
-              />
-            </View>
-            <Text style={[styles.strengthText, { color: getStrengthColor() }]}>
-              Kekuatan: {strength.level}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            <Ionicons color={Colors.accent} name="key" size={40} />
+            <Text style={styles.title}>Buat Master Password</Text>
+            <Text style={styles.subtitle}>
+              Kunci utama ini digunakan untuk mengenkripsi seluruh brankas Anda. Pastikan Anda mengingatnya dengan baik.
             </Text>
           </View>
-        )}
 
-        <VaultInput
-          isPassword
-          label="Konfirmasi Master Password"
-          placeholder="Ulangi Master Password"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-        />
+          <View style={styles.alertBox}>
+            <Ionicons color={Colors.warning} name="warning-outline" size={20} />
+            <Text style={styles.alertText}>
+              Tidak ada server pemulihan! Jika Anda lupa Master Password, data di dalam Vault tidak dapat dipulihkan.
+            </Text>
+          </View>
 
-        <View style={styles.buttonContainer}>
-          <VaultButton
-            loading={loading}
-            title="Kunci & Buka Vault"
-            variant="primary"
-            onPress={handleCreate}
+          {setupError ? (
+            <View style={styles.errorBox}>
+              <Ionicons color={Colors.error} name="alert-circle" size={18} />
+              <Text style={styles.errorBoxText}>{setupError}</Text>
+            </View>
+          ) : null}
+
+          <VaultInput
+            isPassword
+            error={passwordError}
+            label="Master Password"
+            placeholder="Minimal 8 karakter"
+            value={password}
+            onChangeText={(txt) => {
+              setPassword(txt);
+              if (passwordError) setPasswordError('');
+            }}
           />
-        </View>
-      </ScrollView>
+
+          {password.length > 0 && (
+            <View style={styles.strengthContainer}>
+              <View style={styles.strengthBarBg}>
+                <View
+                  style={[
+                    styles.strengthBarFill,
+                    {
+                      width: `${(strength.score / 4) * 100}%`,
+                      backgroundColor: getStrengthColor(),
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={[styles.strengthText, { color: getStrengthColor() }]}>
+                Kekuatan: {strength.level}
+              </Text>
+            </View>
+          )}
+
+          <VaultInput
+            isPassword
+            error={confirmError}
+            label="Konfirmasi Master Password"
+            placeholder="Ulangi Master Password"
+            value={confirmPassword}
+            onChangeText={(txt) => {
+              setConfirmPassword(txt);
+              if (confirmError) setConfirmError('');
+            }}
+          />
+
+          <View style={styles.buttonContainer}>
+            <VaultButton
+              loading={loading}
+              title="Kunci & Buka Vault"
+              variant="primary"
+              onPress={handleCreate}
+            />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -130,6 +176,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.lg,
+    paddingBottom: 80,
   },
   header: {
     alignItems: 'center',
@@ -164,6 +211,22 @@ const styles = StyleSheet.create({
     color: Colors.warning,
     fontSize: Typography.sizes.xs,
     lineHeight: 16,
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(228, 91, 99, 0.12)',
+    borderWidth: 1,
+    borderColor: Colors.error,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    gap: Spacing.sm,
+  },
+  errorBoxText: {
+    flex: 1,
+    color: Colors.error,
+    fontSize: Typography.sizes.sm,
   },
   strengthContainer: {
     marginBottom: Spacing.md,

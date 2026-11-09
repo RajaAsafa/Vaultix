@@ -7,10 +7,10 @@ export const Colors = {
   primary: '#17243A',
   secondary: '#263750',
   accent: '#4C8DDF',
-  background: '#101827',
-  surface: '#1D2A3D',
-  surfaceLight: '#263750',
-  border: '#2E3F59',
+  background: '#000000',
+  surface: '#131A26',
+  surfaceLight: '#1C2638',
+  border: '#233045',
   borderFocus: '#4C8DDF',
 
   // Status colors
@@ -24,7 +24,7 @@ export const Colors = {
   textMuted: '#6B7A90',
 
   // Overlay & Alpha
-  overlay: 'rgba(16, 24, 39, 0.85)',
+  overlay: 'rgba(0, 0, 0, 0.85)',
   cardBorder: 'rgba(76, 141, 223, 0.15)',
 } as const;
 

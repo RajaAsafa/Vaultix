@@ -5,7 +5,8 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,6 +37,12 @@ export const EditAccountScreen: React.FC<Props> = ({ navigation, route }) => {
   const [notes, setNotes] = useState(account?.notes ?? '');
   const [loading, setLoading] = useState(false);
 
+  // Inline red errors instead of popups
+  const [accountNameError, setAccountNameError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [submitError, setSubmitError] = useState('');
+
   if (!account) {
     return (
       <SafeAreaView style={styles.container}>
@@ -56,24 +63,43 @@ export const EditAccountScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleGeneratePassword = () => {
     const generated = generatePassword();
     setPassword(generated);
+    if (passwordError) setPasswordError('');
   };
 
   const handleSave = async () => {
+    let hasError = false;
+
     if (!accountName.trim()) {
-      Alert.alert('Perhatian', 'Nama Akun wajib diisi.');
-      return;
+      setAccountNameError('Nama Akun / Layanan wajib diisi');
+      hasError = true;
+    } else {
+      setAccountNameError('');
     }
+
     if (!password) {
-      Alert.alert('Perhatian', 'Password wajib diisi.');
-      return;
+      setPasswordError('Password akun wajib diisi');
+      hasError = true;
+    } else {
+      setPasswordError('');
     }
+
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setEmailError('Format email tidak valid (contoh: user@mail.com)');
+      hasError = true;
+    } else {
+      setEmailError('');
+    }
+
+    if (hasError) return;
+
     if (!vek) {
-      Alert.alert('Error', 'Sesi enkripsi tidak valid.');
+      setSubmitError('Sesi enkripsi tidak valid. Silakan kunci dan buka kembali.');
       return;
     }
 
     try {
       setLoading(true);
+      setSubmitError('');
       await updateAccount(
         {
           ...account,
@@ -88,7 +114,7 @@ export const EditAccountScreen: React.FC<Props> = ({ navigation, route }) => {
       );
       navigation.goBack();
     } catch (err: unknown) {
-      Alert.alert('Gagal', err instanceof Error ? err.message : 'Gagal memperbarui akun');
+      setSubmitError(err instanceof Error ? err.message : 'Gagal memperbarui akun');
     } finally {
       setLoading(false);
     }
@@ -105,114 +131,143 @@ export const EditAccountScreen: React.FC<Props> = ({ navigation, route }) => {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <VaultInput
-          label="Nama Layanan / Akun *"
-          value={accountName}
-          onChangeText={setAccountName}
-        />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {submitError ? (
+            <View style={styles.errorBanner}>
+              <Ionicons color={Colors.error} name="alert-circle" size={18} />
+              <Text style={styles.errorBannerText}>{submitError}</Text>
+            </View>
+          ) : null}
 
-        <VaultInput
-          label="Username / ID Akun (Opsional)"
-          value={username}
-          onChangeText={setUsername}
-        />
-
-        <VaultInput
-          autoCapitalize="none"
-          keyboardType="email-address"
-          label="Email (Opsional)"
-          value={email}
-          onChangeText={setEmail}
-        />
-
-        <VaultInput
-          isPassword
-          label="Password *"
-          rightAction={
-            <TouchableOpacity
-              style={styles.generateBtn}
-              onPress={handleGeneratePassword}
-            >
-              <Ionicons color={Colors.accent} name="flash" size={18} />
-              <Text style={styles.generateBtnText}>Acak</Text>
-            </TouchableOpacity>
-          }
-          value={password}
-          onChangeText={setPassword}
-        />
-
-        {password.length > 0 && (
-          <View style={styles.strengthBox}>
-            <Text style={styles.strengthLabel}>
-              Kekuatan:{' '}
-              <Text
-                style={{
-                  color:
-                    strength.level === 'Very Strong' || strength.level === 'Strong'
-                      ? Colors.success
-                      : strength.level === 'Medium'
-                      ? Colors.warning
-                      : Colors.error,
-                }}
-              >
-                {strength.level}
-              </Text>
-            </Text>
-          </View>
-        )}
-
-        {/* Category Picker */}
-        <Text style={styles.categoryLabel}>Pilih Kategori</Text>
-        <View style={styles.categoryGrid}>
-          {categories.map((cat) => {
-            const isSelected = categoryId === cat.id;
-            return (
-              <TouchableOpacity
-                key={cat.id}
-                style={[
-                  styles.categoryPill,
-                  isSelected && styles.categoryPillActive,
-                ]}
-                onPress={() => setCategoryId(isSelected ? null : cat.id)}
-              >
-                <Ionicons
-                  color={isSelected ? Colors.accent : Colors.textSecondary}
-                  name={(cat.icon as unknown as keyof typeof Ionicons.glyphMap) || 'grid-outline'}
-                  size={16}
-                />
-                <Text
-                  style={[
-                    styles.categoryPillText,
-                    isSelected && styles.categoryPillTextActive,
-                  ]}
-                >
-                  {cat.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* Notes */}
-        <VaultInput
-          multiline
-          label="Catatan Tambahan (Opsional)"
-          numberOfLines={3}
-          style={{ height: 80, textAlignVertical: 'top' }}
-          value={notes}
-          onChangeText={setNotes}
-        />
-
-        <View style={styles.actionContainer}>
-          <VaultButton
-            loading={loading}
-            title="Simpan Perubahan"
-            variant="primary"
-            onPress={handleSave}
+          <VaultInput
+            error={accountNameError}
+            label="Nama Layanan / Akun *"
+            value={accountName}
+            onChangeText={(txt) => {
+              setAccountName(txt);
+              if (accountNameError) setAccountNameError('');
+            }}
           />
-        </View>
-      </ScrollView>
+
+          <VaultInput
+            label="Username / ID Akun (Opsional)"
+            value={username}
+            onChangeText={setUsername}
+          />
+
+          <VaultInput
+            autoCapitalize="none"
+            error={emailError}
+            keyboardType="email-address"
+            label="Email (Opsional)"
+            value={email}
+            onChangeText={(txt) => {
+              setEmail(txt);
+              if (emailError) setEmailError('');
+            }}
+          />
+
+          <VaultInput
+            isPassword
+            error={passwordError}
+            label="Password *"
+            rightAction={
+              <TouchableOpacity
+                style={styles.generateBtn}
+                onPress={handleGeneratePassword}
+              >
+                <Ionicons color={Colors.accent} name="flash" size={18} />
+                <Text style={styles.generateBtnText}>Acak</Text>
+              </TouchableOpacity>
+            }
+            value={password}
+            onChangeText={(txt) => {
+              setPassword(txt);
+              if (passwordError) setPasswordError('');
+            }}
+          />
+
+          {password.length > 0 && (
+            <View style={styles.strengthBox}>
+              <Text style={styles.strengthLabel}>
+                Kekuatan:{' '}
+                <Text
+                  style={{
+                    color:
+                      strength.level === 'Very Strong' || strength.level === 'Strong'
+                        ? Colors.success
+                        : strength.level === 'Medium'
+                        ? Colors.warning
+                        : Colors.error,
+                  }}
+                >
+                  {strength.level}
+                </Text>
+              </Text>
+            </View>
+          )}
+
+          {/* Category Picker */}
+          <Text style={styles.categoryLabel}>Pilih Kategori</Text>
+          <View style={styles.categoryGrid}>
+            {categories.map((cat) => {
+              const isSelected = categoryId === cat.id;
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[
+                    styles.categoryPill,
+                    isSelected && styles.categoryPillActive,
+                  ]}
+                  onPress={() => setCategoryId(isSelected ? null : cat.id)}
+                >
+                  <Ionicons
+                    color={isSelected ? Colors.accent : Colors.textSecondary}
+                    name={(cat.icon as unknown as keyof typeof Ionicons.glyphMap) || 'grid-outline'}
+                    size={16}
+                  />
+                  <Text
+                    style={[
+                      styles.categoryPillText,
+                      isSelected && styles.categoryPillTextActive,
+                    ]}
+                  >
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Notes (Tinggi dan lega saat keyboard aktif) */}
+          <VaultInput
+            multiline
+            label="Catatan Tambahan (Opsional)"
+            numberOfLines={4}
+            style={{ height: 90, textAlignVertical: 'top' }}
+            value={notes}
+            onChangeText={setNotes}
+          />
+
+          <View style={styles.actionContainer}>
+            <VaultButton
+              loading={loading}
+              title="Simpan Perubahan"
+              variant="primary"
+              onPress={handleSave}
+            />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -241,6 +296,23 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.md,
+    paddingBottom: 150, // Ruang lega agar note tidak tenggelam saat keyboard muncul
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(228, 91, 99, 0.12)',
+    borderWidth: 1,
+    borderColor: Colors.error,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    gap: Spacing.sm,
+  },
+  errorBannerText: {
+    flex: 1,
+    color: Colors.error,
+    fontSize: Typography.sizes.sm,
   },
   generateBtn: {
     flexDirection: 'row',
