@@ -14,9 +14,9 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export const TabNavigator: React.FC = () => {
   const insets = useSafeAreaInsets();
-  // Ensure comfortable bottom spacing above Android navigation / gesture bar
-  const bottomPadding = insets.bottom > 0 ? insets.bottom + 8 : 18;
-  const barHeight = 56 + bottomPadding;
+  // Ensure generous bottom clearance above Android navigation bar and gestures
+  const bottomPadding = Math.max(insets.bottom, 14) + 16;
+  const barHeight = 58 + bottomPadding;
 
   return (
     <Tab.Navigator
@@ -27,11 +27,14 @@ export const TabNavigator: React.FC = () => {
           borderTopColor: Colors.border,
           height: barHeight,
           paddingBottom: bottomPadding,
-          paddingTop: 8,
+          paddingTop: 10,
         },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '500',
+        },
+        tabBarItemStyle: {
+          paddingVertical: 2,
         },
         tabBarActiveTintColor: Colors.accent,
         tabBarInactiveTintColor: Colors.textMuted,
