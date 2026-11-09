@@ -1,5 +1,10 @@
 import { create } from 'zustand';
-import { DecryptedAccount, DecryptedCategory, AccountRecord } from '../types';
+import {
+  DecryptedAccount,
+  DecryptedCategory,
+  AccountRecord,
+  DecryptedPasswordHistory,
+} from '../types';
 import { AccountRepository } from '../database/repositories/AccountRepository';
 import { CategoryRepository } from '../database/repositories/CategoryRepository';
 import { encryptAesGcm, decryptAesGcm } from '../security/cipher';
@@ -24,6 +29,7 @@ interface VaultState {
   updateAccount: (account: DecryptedAccount, vek: Uint8Array) => Promise<void>;
   deleteAccount: (id: string) => Promise<void>;
   toggleFavorite: (id: string) => Promise<void>;
+  getPasswordHistory: (accountId: string, vek: Uint8Array) => Promise<DecryptedPasswordHistory[]>;
 
   clearMemory: () => void;
 }
@@ -67,12 +73,17 @@ export const useVaultStore = create<VaultState>((set, get) => ({
             ? await decryptAesGcm(new Uint8Array(record.notes_encrypted), vek)
             : undefined;
 
+          const pin = record.pin_encrypted
+            ? await decryptAesGcm(new Uint8Array(record.pin_encrypted), vek)
+            : undefined;
+
           decryptedAccounts.push({
             id: record.id,
             accountName,
             username,
             email,
             password,
+            pin,
             categoryId: record.category_id,
             notes,
             isFavorite: record.is_favorite === 1,
@@ -104,6 +115,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     const usernameEncrypted = data.username ? await encryptAesGcm(data.username, vek) : null;
     const emailEncrypted = data.email ? await encryptAesGcm(data.email, vek) : null;
     const notesEncrypted = data.notes ? await encryptAesGcm(data.notes, vek) : null;
+    const pinEncrypted = data.pin ? await encryptAesGcm(data.pin, vek) : null;
 
     const record: AccountRecord = {
       id,
@@ -111,6 +123,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       username_encrypted: usernameEncrypted,
       email_encrypted: emailEncrypted,
       password_encrypted: passwordEncrypted,
+      pin_encrypted: pinEncrypted,
       category_id: data.categoryId || null,
       notes_encrypted: notesEncrypted,
       is_favorite: 0,
@@ -126,6 +139,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       username: data.username,
       email: data.email,
       password: data.password,
+      pin: data.pin,
       categoryId: data.categoryId,
       notes: data.notes,
       isFavorite: false,
@@ -141,11 +155,23 @@ export const useVaultStore = create<VaultState>((set, get) => ({
   updateAccount: async (account, vek) => {
     const now = new Date().toISOString();
 
+    // Check if password changed, if so save old password to history
+    const existing = get().accounts.find((a) => a.id === account.id);
+    if (existing && existing.password !== account.password) {
+      try {
+        const oldEncrypted = await encryptAesGcm(existing.password, vek);
+        await AccountRepository.addPasswordHistory(account.id, oldEncrypted);
+      } catch {
+        // history save shouldn't block primary update
+      }
+    }
+
     const accountNameEncrypted = await encryptAesGcm(account.accountName, vek);
     const passwordEncrypted = await encryptAesGcm(account.password, vek);
     const usernameEncrypted = account.username ? await encryptAesGcm(account.username, vek) : null;
     const emailEncrypted = account.email ? await encryptAesGcm(account.email, vek) : null;
     const notesEncrypted = account.notes ? await encryptAesGcm(account.notes, vek) : null;
+    const pinEncrypted = account.pin ? await encryptAesGcm(account.pin, vek) : null;
 
     const record: AccountRecord = {
       id: account.id,
@@ -153,6 +179,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       username_encrypted: usernameEncrypted,
       email_encrypted: emailEncrypted,
       password_encrypted: passwordEncrypted,
+      pin_encrypted: pinEncrypted,
       category_id: account.categoryId || null,
       notes_encrypted: notesEncrypted,
       is_favorite: account.isFavorite ? 1 : 0,
@@ -167,6 +194,29 @@ export const useVaultStore = create<VaultState>((set, get) => ({
         acc.id === account.id ? { ...account, updatedAt: now } : acc
       ),
     }));
+  },
+
+  getPasswordHistory: async (accountId: string, vek: Uint8Array): Promise<DecryptedPasswordHistory[]> => {
+    try {
+      const records = await AccountRepository.getPasswordHistory(accountId);
+      const decryptedList: DecryptedPasswordHistory[] = [];
+      for (const r of records) {
+        try {
+          const pw = await decryptAesGcm(new Uint8Array(r.password_encrypted), vek);
+          decryptedList.push({
+            id: r.id,
+            accountId: r.account_id,
+            password: pw,
+            createdAt: r.created_at,
+          });
+        } catch {
+          continue;
+        }
+      }
+      return decryptedList;
+    } catch {
+      return [];
+    }
   },
 
   deleteAccount: async (id) => {

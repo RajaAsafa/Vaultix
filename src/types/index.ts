@@ -9,6 +9,7 @@ export interface AccountRecord {
   username_encrypted: Uint8Array | null;
   email_encrypted: Uint8Array | null;
   password_encrypted: Uint8Array;
+  pin_encrypted?: Uint8Array | null;
   category_id: string | null;
   notes_encrypted: Uint8Array | null;
   is_favorite: number; // 0 or 1
@@ -22,11 +23,26 @@ export interface DecryptedAccount {
   username?: string;
   email?: string;
   password: string;
+  pin?: string;
   categoryId?: string | null;
   notes?: string;
   isFavorite: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PasswordHistoryRecord {
+  id: string;
+  account_id: string;
+  password_encrypted: Uint8Array;
+  created_at: string;
+}
+
+export interface DecryptedPasswordHistory {
+  id: string;
+  accountId: string;
+  password: string;
+  createdAt: string;
 }
 
 export interface CategoryRecord {
@@ -85,6 +101,7 @@ export type RootStackParamList = {
   AddAccount: { categoryId?: string } | undefined;
   EditAccount: { accountId: string };
   AccountDetail: { accountId: string };
+  BackupRestore: undefined;
 };
 
 export type AuthStackParamList = {

@@ -16,6 +16,7 @@ import { MainTabParamList, RootStackParamList } from '../../types';
 import { Colors, Spacing, BorderRadius, Typography } from '../../constants/theme';
 import { useVaultStore } from '../../store/vaultStore';
 import { SettingsRepository } from '../../database/repositories/SettingsRepository';
+import { checkPasswordStrength } from '../../security/generator';
 import { VaultInput } from '../../components/VaultInput';
 import { AccountListItem } from '../../components/AccountListItem';
 
@@ -23,6 +24,8 @@ type NavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, 'VaultTab'>,
   NativeStackNavigationProp<RootStackParamList>
 >;
+
+type SortMode = 'newest' | 'az' | 'za' | 'weakest';
 
 export const VaultListScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
@@ -33,6 +36,8 @@ export const VaultListScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [sortMode, setSortMode] = useState<SortMode>('newest');
+  const [showSortBar, setShowSortBar] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [clipboardTimeout, setClipboardTimeout] = useState(30);
 
@@ -72,6 +77,24 @@ export const VaultListScreen: React.FC = () => {
     return true;
   });
 
+  // Dynamic In-Memory Sorting
+  const sortedAccounts = [...filteredAccounts].sort((a, b) => {
+    switch (sortMode) {
+      case 'az':
+        return a.accountName.localeCompare(b.accountName);
+      case 'za':
+        return b.accountName.localeCompare(a.accountName);
+      case 'weakest': {
+        const scoreA = checkPasswordStrength(a.password).score;
+        const scoreB = checkPasswordStrength(b.password).score;
+        return scoreA - scoreB;
+      }
+      case 'newest':
+      default:
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
+  });
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -85,24 +108,66 @@ export const VaultListScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Search Input */}
-      <View style={styles.searchContainer}>
-        <VaultInput
-          placeholder="Cari nama akun, username, email..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          leftAction={
-            <Ionicons color={Colors.textMuted} name="search-outline" size={20} />
-          }
-          rightAction={
-            searchQuery.length > 0 ? (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons color={Colors.textSecondary} name="close-circle" size={18} />
-              </TouchableOpacity>
-            ) : null
-          }
-        />
+      {/* Search Input & Sort Button */}
+      <View style={styles.searchRow}>
+        <View style={{ flex: 1 }}>
+          <VaultInput
+            placeholder="Cari nama akun, username, email..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            leftAction={
+              <Ionicons color={Colors.textMuted} name="search-outline" size={20} />
+            }
+            rightAction={
+              searchQuery.length > 0 ? (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Ionicons color={Colors.textSecondary} name="close-circle" size={18} />
+                </TouchableOpacity>
+              ) : null
+            }
+          />
+        </View>
+
+        <TouchableOpacity
+          style={[styles.sortToggleBtn, showSortBar && styles.sortToggleBtnActive]}
+          onPress={() => setShowSortBar(!showSortBar)}
+        >
+          <Ionicons
+            color={showSortBar ? Colors.accent : Colors.textSecondary}
+            name="swap-vertical"
+            size={20}
+          />
+        </TouchableOpacity>
       </View>
+
+      {/* Quick Sort Bar */}
+      {showSortBar && (
+        <View style={styles.sortBar}>
+          <Text style={styles.sortBarLabel}>Urutkan:</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {(
+              [
+                { id: 'newest', label: 'Terbaru' },
+                { id: 'az', label: 'Abjad A-Z' },
+                { id: 'za', label: 'Abjad Z-A' },
+                { id: 'weakest', label: 'Password Terlemah' },
+              ] as const
+            ).map((s) => (
+              <TouchableOpacity
+                key={s.id}
+                style={[styles.sortPill, sortMode === s.id && styles.sortPillActive]}
+                onPress={() => setSortMode(s.id)}
+              >
+                <Text
+                  style={[styles.sortPillText, sortMode === s.id && styles.sortPillTextActive]}
+                >
+                  {s.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Category & Filter Pills */}
       <View style={styles.filterRow}>
@@ -177,7 +242,7 @@ export const VaultListScreen: React.FC = () => {
       {/* Accounts List */}
       <FlatList
         contentContainerStyle={styles.listContent}
-        data={filteredAccounts}
+        data={sortedAccounts}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => {
           const category = categories.find((c) => c.id === item.categoryId);
@@ -236,6 +301,60 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    gap: Spacing.xs,
+  },
+  sortToggleBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.surface,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
+  },
+  sortToggleBtnActive: {
+    borderColor: Colors.accent,
+    backgroundColor: Colors.secondary,
+  },
+  sortBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    marginBottom: Spacing.sm,
+    gap: Spacing.xs,
+  },
+  sortBarLabel: {
+    color: Colors.textMuted,
+    fontSize: Typography.sizes.xs,
+    marginRight: 4,
+  },
+  sortPill: {
+    backgroundColor: Colors.surface,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginRight: 6,
+  },
+  sortPillActive: {
+    backgroundColor: Colors.secondary,
+    borderColor: Colors.accent,
+  },
+  sortPillText: {
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.xs,
+  },
+  sortPillTextActive: {
+    color: Colors.accent,
+    fontWeight: Typography.weights.semibold,
   },
   searchContainer: {
     paddingHorizontal: Spacing.md,

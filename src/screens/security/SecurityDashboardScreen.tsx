@@ -46,6 +46,15 @@ export const SecurityDashboardScreen: React.FC = () => {
     (acc) => (passwordUsageMap.get(acc.password)?.length ?? 0) > 1
   );
 
+  // Group duplicate accounts by identical password
+  const duplicateGroups: { password: string; accounts: typeof accounts }[] = [];
+  for (const [pw, ids] of passwordUsageMap.entries()) {
+    if (ids.length > 1) {
+      const groupAccounts = accounts.filter((a) => ids.includes(a.id));
+      duplicateGroups.push({ password: pw, accounts: groupAccounts });
+    }
+  }
+
   const securityScore = accounts.length > 0
     ? Math.round(
         ((strongAccounts.length * 100 + mediumAccounts.length * 50) /
@@ -135,6 +144,43 @@ export const SecurityDashboardScreen: React.FC = () => {
             </Text>
           </View>
         </VaultCard>
+
+        {/* Duplicate Passwords Section */}
+        {duplicateGroups.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>Password Digunakan Bersama ({duplicateAccounts.length} Akun)</Text>
+            {duplicateGroups.map((group, gIdx) => (
+              <VaultCard key={'group_' + gIdx} style={styles.duplicateCard}>
+                <View style={styles.duplicateHeader}>
+                  <Ionicons color={Colors.warning} name="copy-outline" size={18} />
+                  <Text style={styles.duplicateHeaderText}>
+                    Password sama digunakan di {group.accounts.length} akun:
+                  </Text>
+                </View>
+
+                {group.accounts.map((acc, aIdx) => (
+                  <TouchableOpacity
+                    key={acc.id}
+                    activeOpacity={0.7}
+                    style={[styles.duplicateRow, aIdx > 0 && styles.duplicateRowBorder]}
+                    onPress={() => navigation.navigate('EditAccount', { accountId: acc.id })}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.duplicateAccountName}>{acc.accountName}</Text>
+                      <Text style={styles.duplicateAccountUser}>
+                        {acc.username || acc.email || 'Tanpa username'}
+                      </Text>
+                    </View>
+                    <View style={styles.fixBtn}>
+                      <Text style={styles.fixBtnText}>Ganti</Text>
+                      <Ionicons color={Colors.accent} name="arrow-forward" size={14} />
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </VaultCard>
+            ))}
+          </>
+        )}
 
         {/* Accounts Requiring Review */}
         {weakAccounts.length > 0 && (
@@ -295,5 +341,58 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontSize: Typography.sizes.xs,
     marginTop: 2,
+  },
+  duplicateCard: {
+    marginBottom: Spacing.md,
+    padding: Spacing.sm,
+  },
+  duplicateHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingBottom: Spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    marginBottom: Spacing.xs,
+  },
+  duplicateHeaderText: {
+    color: Colors.warning,
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.semibold,
+  },
+  duplicateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
+  },
+  duplicateRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  duplicateAccountName: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.medium,
+  },
+  duplicateAccountUser: {
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.xs,
+    marginTop: 2,
+  },
+  fixBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.secondary,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.sm,
+  },
+  fixBtnText: {
+    color: Colors.accent,
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.semibold,
   },
 });

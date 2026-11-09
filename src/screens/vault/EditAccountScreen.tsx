@@ -33,6 +33,7 @@ export const EditAccountScreen: React.FC<Props> = ({ navigation, route }) => {
   const [username, setUsername] = useState(account?.username ?? '');
   const [email, setEmail] = useState(account?.email ?? '');
   const [password, setPassword] = useState(account?.password ?? '');
+  const [pin, setPin] = useState(account?.pin ?? '');
   const [categoryId, setCategoryId] = useState<string | null>(account?.categoryId ?? null);
   const [notes, setNotes] = useState(account?.notes ?? '');
   const [loading, setLoading] = useState(false);
@@ -107,6 +108,7 @@ export const EditAccountScreen: React.FC<Props> = ({ navigation, route }) => {
           username: username.trim() || undefined,
           email: email.trim() || undefined,
           password,
+          pin: pin.trim() || undefined,
           categoryId,
           notes: notes.trim() || undefined,
         },
@@ -215,6 +217,15 @@ export const EditAccountScreen: React.FC<Props> = ({ navigation, route }) => {
               </Text>
             </View>
           )}
+
+          {/* PIN / Security Code */}
+          <VaultInput
+            isPassword
+            label="PIN / Kode Keamanan (Opsional)"
+            placeholder="contoh: PIN ATM, PIN e-Wallet 6 digit"
+            value={pin}
+            onChangeText={setPin}
+          />
 
           {/* Category Picker */}
           <Text style={styles.categoryLabel}>Pilih Kategori</Text>

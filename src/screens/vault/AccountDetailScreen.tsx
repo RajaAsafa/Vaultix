@@ -6,12 +6,14 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../types';
+import { RootStackParamList, DecryptedPasswordHistory } from '../../types';
 import { Colors, Spacing, BorderRadius, Typography } from '../../constants/theme';
+import { useAuthStore } from '../../store/authStore';
 import { useVaultStore } from '../../store/vaultStore';
 import { SettingsRepository } from '../../database/repositories/SettingsRepository';
 import { copyToClipboardWithAutoClear } from '../../services/clipboardService';
@@ -27,6 +29,8 @@ export const AccountDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const categories = useVaultStore((s) => s.categories);
   const toggleFavorite = useVaultStore((s) => s.toggleFavorite);
   const deleteAccount = useVaultStore((s) => s.deleteAccount);
+  const getPasswordHistory = useVaultStore((s) => s.getPasswordHistory);
+  const vek = useAuthStore((s) => s.vek);
 
   // Retain account snapshot during delete transition
   const cachedAccountRef = useRef(currentAccount);
@@ -36,6 +40,10 @@ export const AccountDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const account = currentAccount ?? cachedAccountRef.current;
 
   const [showPassword, setShowPassword] = useState(false);
+  const [showPin, setShowPin] = useState(false);
+  const [historyList, setHistoryList] = useState<DecryptedPasswordHistory[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [revealedHistories, setRevealedHistories] = useState<Record<string, boolean>>({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [clipboardTimeout, setClipboardTimeout] = useState(30);
 
@@ -44,6 +52,14 @@ export const AccountDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       .then((s) => setClipboardTimeout(s.clipboard_timeout))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (account?.id && vek) {
+      getPasswordHistory(account.id, vek)
+        .then(setHistoryList)
+        .catch(() => {});
+    }
+  }, [account?.id, vek, getPasswordHistory]);
 
   if (!account) {
     return (
@@ -224,6 +240,108 @@ export const AccountDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
         </VaultCard>
 
+        {/* PIN / Security Code */}
+        {account.pin && (
+          <VaultCard>
+            <Text style={styles.fieldLabel}>PIN / KODE KEAMANAN</Text>
+            <View style={styles.fieldRow}>
+              <Text style={[styles.fieldValue, !showPin && styles.passwordMasked]}>
+                {showPin ? account.pin : '••••••••'}
+              </Text>
+              <View style={styles.passwordActions}>
+                <TouchableOpacity
+                  style={styles.copyBtn}
+                  onPress={() => setShowPin(!showPin)}
+                >
+                  <Ionicons
+                    color={Colors.textSecondary}
+                    name={showPin ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.copyBtn}
+                  onPress={() => handleCopy(account.pin!, 'PIN')}
+                >
+                  <Ionicons color={Colors.accent} name="copy-outline" size={20} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </VaultCard>
+        )}
+
+        {/* Password History Section */}
+        {historyList.length > 0 && (
+          <View style={styles.historySection}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.historyToggleHeader}
+              onPress={() => setShowHistory(!showHistory)}
+            >
+              <View style={styles.historyTitleRow}>
+                <Ionicons color={Colors.textSecondary} name="time-outline" size={18} />
+                <Text style={styles.historyTitle}>
+                  Riwayat Password Lama ({historyList.length})
+                </Text>
+              </View>
+              <Ionicons
+                color={Colors.textSecondary}
+                name={showHistory ? 'chevron-up' : 'chevron-down'}
+                size={18}
+              />
+            </TouchableOpacity>
+
+            {showHistory && (
+              <VaultCard style={styles.historyCard}>
+                {historyList.map((hist, idx) => {
+                  const isRevealed = !!revealedHistories[hist.id];
+                  const dateStr = new Date(hist.createdAt).toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  });
+                  return (
+                    <View
+                      key={hist.id}
+                      style={[styles.historyRow, idx > 0 && styles.historyRowBorder]}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.historyDate}>Diganti: {dateStr}</Text>
+                        <Text style={[styles.historyPassword, !isRevealed && styles.passwordMasked]}>
+                          {isRevealed ? hist.password : '••••••••••••'}
+                        </Text>
+                      </View>
+                      <View style={styles.historyActions}>
+                        <TouchableOpacity
+                          style={styles.copyBtn}
+                          onPress={() =>
+                            setRevealedHistories((prev) => ({
+                              ...prev,
+                              [hist.id]: !prev[hist.id],
+                            }))
+                          }
+                        >
+                          <Ionicons
+                            color={Colors.textSecondary}
+                            name={isRevealed ? 'eye-off-outline' : 'eye-outline'}
+                            size={18}
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.copyBtn}
+                          onPress={() => handleCopy(hist.password, 'Password lama')}
+                        >
+                          <Ionicons color={Colors.accent} name="copy-outline" size={18} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })}
+              </VaultCard>
+            )}
+          </View>
+        )}
+
         {/* Notes */}
         {account.notes && (
           <VaultCard>
@@ -377,6 +495,58 @@ const styles = StyleSheet.create({
   metaText: {
     color: Colors.textMuted,
     fontSize: Typography.sizes.xs,
+  },
+  historySection: {
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  historyToggleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
+  },
+  historyTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  historyTitle: {
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.semibold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  historyCard: {
+    marginTop: Spacing.xs,
+    padding: Spacing.sm,
+  },
+  historyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.sm,
+  },
+  historyRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  historyDate: {
+    color: Colors.textMuted,
+    fontSize: 10,
+    marginBottom: 2,
+  },
+  historyPassword: {
+    color: Colors.textPrimary,
+    fontSize: Typography.sizes.sm,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  historyActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
   },
   deleteButton: {
     flexDirection: 'row',

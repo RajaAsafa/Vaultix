@@ -15,10 +15,32 @@ export const UnlockVaultScreen: React.FC = () => {
   const [hasBiometrics, setHasBiometrics] = useState(false);
   const [localError, setLocalError] = useState('');
 
+  // Anti-Brute Force states
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+
   const unlockWithPassword = useAuthStore((s) => s.unlockWithPassword);
   const unlockWithBiometrics = useAuthStore((s) => s.unlockWithBiometrics);
   const errorMessage = useAuthStore((s) => s.errorMessage);
   const clearError = useAuthStore((s) => s.clearError);
+
+  // Cooldown countdown timer
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return;
+
+    const timer = setInterval(() => {
+      setCooldownSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setLocalError('');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [cooldownSeconds]);
 
   useEffect(() => {
     (async () => {
@@ -45,6 +67,11 @@ export const UnlockVaultScreen: React.FC = () => {
   }, []);
 
   const handlePasswordUnlock = async () => {
+    if (cooldownSeconds > 0) {
+      setLocalError(`Keamanan aktif: Silakan tunggu ${cooldownSeconds} detik`);
+      return;
+    }
+
     if (!password) {
       setLocalError('Masukkan Master Password Anda');
       return;
@@ -56,7 +83,23 @@ export const UnlockVaultScreen: React.FC = () => {
     setLoading(false);
 
     if (!success) {
-      setLocalError('Master Password salah. Silakan coba lagi.');
+      const nextFailures = failedAttempts + 1;
+      setFailedAttempts(nextFailures);
+
+      if (nextFailures >= 5) {
+        const cooldown = nextFailures === 5 ? 30 : 60;
+        setCooldownSeconds(cooldown);
+        setLocalError(
+          `Terlalu banyak percobaan salah (${nextFailures}x). Sistem dijeda selama ${cooldown} detik.`
+        );
+      } else {
+        setLocalError(
+          `Master Password salah. Percobaan ${nextFailures}/5 sebelum jeda keamanan.`
+        );
+      }
+    } else {
+      setFailedAttempts(0);
+      setCooldownSeconds(0);
     }
   };
 
@@ -89,9 +132,14 @@ export const UnlockVaultScreen: React.FC = () => {
 
         <View style={styles.form}>
           <VaultInput
+            editable={cooldownSeconds === 0}
             isPassword
-            error={localError || (errorMessage ?? undefined)}
-            placeholder="Masukkan Master Password"
+            error={
+              cooldownSeconds > 0
+                ? `Keamanan aktif: Coba lagi dalam ${cooldownSeconds} detik`
+                : localError || (errorMessage ?? undefined)
+            }
+            placeholder={cooldownSeconds > 0 ? 'Terkunci sementara...' : 'Masukkan Master Password'}
             value={password}
             onChangeText={(txt) => {
               if (localError) setLocalError('');
@@ -101,8 +149,9 @@ export const UnlockVaultScreen: React.FC = () => {
           />
 
           <VaultButton
+            disabled={cooldownSeconds > 0}
             loading={loading}
-            title="Buka Vault"
+            title={cooldownSeconds > 0 ? `Tunggu (${cooldownSeconds}s)` : 'Buka Vault'}
             variant="primary"
             onPress={handlePasswordUnlock}
           />

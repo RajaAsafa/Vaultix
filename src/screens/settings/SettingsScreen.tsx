@@ -11,6 +11,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../types';
 import { Colors, Spacing, BorderRadius, Typography } from '../../constants/theme';
 import { useAuthStore } from '../../store/authStore';
 import { useVaultStore } from '../../store/vaultStore';
@@ -19,6 +22,7 @@ import { enableBiometricUnlock, disableBiometricUnlock } from '../../security/ke
 import { VaultCard } from '../../components/VaultCard';
 
 export const SettingsScreen: React.FC = () => {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const vek = useAuthStore((s) => s.vek);
   const lockVault = useAuthStore((s) => s.lockVault);
   const clearMemory = useVaultStore((s) => s.clearMemory);
@@ -158,6 +162,22 @@ export const SettingsScreen: React.FC = () => {
           <Ionicons color={Colors.warning} name="lock-closed" size={20} />
           <Text style={styles.lockButtonText}>Kunci Vault Sekarang</Text>
         </TouchableOpacity>
+
+        {/* Backup & Restore Section */}
+        <Text style={styles.sectionTitle}>Cadangan & Pemulihan</Text>
+        <VaultCard>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.settingRow}
+            onPress={() => navigation.navigate('BackupRestore')}
+          >
+            <View style={styles.settingText}>
+              <Text style={styles.settingName}>Backup & Restore (.vaultix)</Text>
+              <Text style={styles.settingDesc}>Ekspor atau pulihkan file cadangan terenkripsi</Text>
+            </View>
+            <Ionicons color={Colors.textSecondary} name="chevron-forward" size={18} />
+          </TouchableOpacity>
+        </VaultCard>
 
         {/* About Section */}
         <Text style={styles.sectionTitle}>Tentang Aplikasi</Text>

@@ -71,6 +71,27 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 2,
+    name: 'add_pin_and_password_history',
+    up: async (db) => {
+      await db.execAsync(`
+        -- Add encrypted PIN / extra security code column to accounts
+        ALTER TABLE accounts ADD COLUMN pin_encrypted BLOB;
+
+        -- Create password history table
+        CREATE TABLE IF NOT EXISTS password_history (
+          id TEXT PRIMARY KEY,
+          account_id TEXT NOT NULL,
+          password_encrypted BLOB NOT NULL,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_password_history_account ON password_history(account_id);
+      `);
+    },
+  },
 ];
 
 export async function runMigrations(): Promise<void> {

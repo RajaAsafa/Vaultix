@@ -12,6 +12,7 @@ import { UnlockVaultScreen } from '../screens/auth/UnlockVaultScreen';
 import { AddAccountScreen } from '../screens/vault/AddAccountScreen';
 import { EditAccountScreen } from '../screens/vault/EditAccountScreen';
 import { AccountDetailScreen } from '../screens/vault/AccountDetailScreen';
+import { BackupRestoreScreen } from '../screens/settings/BackupRestoreScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -70,6 +71,7 @@ export const RootNavigator: React.FC = () => {
         options={{ animation: 'slide_from_bottom' }}
       />
       <Stack.Screen component={AccountDetailScreen} name="AccountDetail" />
+      <Stack.Screen component={BackupRestoreScreen} name="BackupRestore" />
     </Stack.Navigator>
   );
 };
