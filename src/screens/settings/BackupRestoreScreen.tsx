@@ -72,9 +72,13 @@ export const BackupRestoreScreen: React.FC = () => {
       setImportSuccess(`Berhasil memulihkan ${res.accountsCount} akun ke dalam brankas!`);
       setImportPassword('');
 
-      // Reload vault data if unlocked
-      if (vek) {
-        await loadVaultData(vek);
+      // Unlock and derive the restored VEK with the backup's master password
+      const unlockWithPassword = useAuthStore.getState().unlockWithPassword;
+      await unlockWithPassword(importPassword);
+
+      const newVek = useAuthStore.getState().vek;
+      if (newVek) {
+        await loadVaultData(newVek);
       }
     } catch (err: unknown) {
       setImportError(err instanceof Error ? err.message : 'Gagal memulihkan file cadangan');

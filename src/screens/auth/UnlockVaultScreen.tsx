@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
+import * as SecureStore from 'expo-secure-store';
 import { Colors, Spacing, BorderRadius, Typography } from '../../constants/theme';
 import { VaultInput } from '../../components/VaultInput';
 import { VaultButton } from '../../components/VaultButton';
@@ -32,6 +33,7 @@ export const UnlockVaultScreen: React.FC = () => {
       setCooldownSeconds((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
+          SecureStore.deleteItemAsync('vaultix_lockout_until').catch(() => {});
           setLocalError('');
           return 0;
         }
@@ -44,6 +46,21 @@ export const UnlockVaultScreen: React.FC = () => {
 
   useEffect(() => {
     (async () => {
+      // Check persisted brute-force lockout
+      try {
+        const lockoutStr = await SecureStore.getItemAsync('vaultix_lockout_until');
+        if (lockoutStr) {
+          const lockoutUntil = parseInt(lockoutStr, 10);
+          const remaining = Math.ceil((lockoutUntil - Date.now()) / 1000);
+          if (remaining > 0) {
+            setCooldownSeconds(remaining);
+            setLocalError(`Keamanan aktif: Silakan tunggu ${remaining} detik`);
+          } else {
+            await SecureStore.deleteItemAsync('vaultix_lockout_until').catch(() => {});
+          }
+        }
+      } catch {}
+
       try {
         const settings = await SettingsRepository.getSettings();
         if (settings.biometric_enabled !== 1) {
@@ -89,6 +106,10 @@ export const UnlockVaultScreen: React.FC = () => {
       if (nextFailures >= 5) {
         const cooldown = nextFailures === 5 ? 30 : 60;
         setCooldownSeconds(cooldown);
+        SecureStore.setItemAsync(
+          'vaultix_lockout_until',
+          (Date.now() + cooldown * 1000).toString()
+        ).catch(() => {});
         setLocalError(
           `Terlalu banyak percobaan salah (${nextFailures}x). Sistem dijeda selama ${cooldown} detik.`
         );
@@ -100,6 +121,7 @@ export const UnlockVaultScreen: React.FC = () => {
     } else {
       setFailedAttempts(0);
       setCooldownSeconds(0);
+      SecureStore.deleteItemAsync('vaultix_lockout_until').catch(() => {});
     }
   };
 

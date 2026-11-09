@@ -20,19 +20,19 @@ export function useAutoLock(): void {
       const settings = await SettingsRepository.getSettings().catch(() => null);
       const autoLockSeconds = settings?.auto_lock_duration ?? 60;
 
-      // When app goes to background
-      if (appState.current === 'active' && nextAppState === 'background') {
+      // When app moves to background (handles active -> inactive -> background on Android)
+      if (/active|inactive/.test(appState.current) && nextAppState === 'background') {
         if (autoLockSeconds === 0) {
           // 0 = Lock Immediately
           lockVault();
-        } else {
+        } else if (backgroundTimestamp.current === null) {
           // Record background timestamp
           backgroundTimestamp.current = Date.now();
         }
       }
 
       // When app returns to active from background
-      if (appState.current === 'background' && nextAppState === 'active') {
+      if (/background|inactive/.test(appState.current) && nextAppState === 'active') {
         if (backgroundTimestamp.current !== null) {
           const elapsed = (Date.now() - backgroundTimestamp.current) / 1000;
           if (elapsed >= autoLockSeconds) {

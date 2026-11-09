@@ -11,26 +11,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { getDatabase } from '../database/db';
 import { generateRandomBytes, deriveKeyEncryptionKey } from '../security/kdf';
 import { encryptAesGcm, decryptAesGcm } from '../security/cipher';
-
-// Helper for Uint8Array <-> Base64
-function uint8ArrayToBase64(bytes: Uint8Array): string {
-  let binary = '';
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-function base64ToUint8Array(base64: string): Uint8Array {
-  const binary = atob(base64);
-  const len = binary.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
-}
+import { uint8ArrayToBase64, base64ToUint8Array } from '../utils/base64';
 
 export interface BackupEnvelope {
   app: 'Vaultix';
@@ -62,6 +43,8 @@ export class BackupService {
       for (const [key, value] of Object.entries(row)) {
         if (value instanceof Uint8Array || (typeof value === 'object' && value !== null && 'byteLength' in value)) {
           copy[key] = uint8ArrayToBase64(new Uint8Array(value as any));
+        } else if (Array.isArray(value)) {
+          copy[key] = uint8ArrayToBase64(new Uint8Array(value));
         } else {
           copy[key] = value;
         }
@@ -234,6 +217,21 @@ export class BackupService {
             [h.id, h.account_id, base64ToUint8Array(h.password_encrypted), h.created_at]
           );
         }
+      }
+
+      // Restore settings if present
+      if (Array.isArray(payload.settings) && payload.settings.length > 0) {
+        const s = payload.settings[0];
+        await db.runAsync(
+          `INSERT OR REPLACE INTO settings (id, auto_lock_duration, biometric_enabled, theme, clipboard_timeout)
+           VALUES (1, ?, ?, ?, ?);`,
+          [
+            s.auto_lock_duration ?? 60,
+            s.biometric_enabled ?? 0,
+            s.theme ?? 'dark',
+            s.clipboard_timeout ?? 30,
+          ]
+        );
       }
     });
 

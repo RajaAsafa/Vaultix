@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -78,22 +78,24 @@ export const VaultListScreen: React.FC = () => {
   });
 
   // Dynamic In-Memory Sorting
-  const sortedAccounts = [...filteredAccounts].sort((a, b) => {
-    switch (sortMode) {
-      case 'az':
-        return a.accountName.localeCompare(b.accountName);
-      case 'za':
-        return b.accountName.localeCompare(a.accountName);
-      case 'weakest': {
-        const scoreA = checkPasswordStrength(a.password).score;
-        const scoreB = checkPasswordStrength(b.password).score;
-        return scoreA - scoreB;
+  const sortedAccounts = useMemo(() => {
+    return [...filteredAccounts].sort((a, b) => {
+      switch (sortMode) {
+        case 'az':
+          return a.accountName.localeCompare(b.accountName);
+        case 'za':
+          return b.accountName.localeCompare(a.accountName);
+        case 'weakest': {
+          const scoreA = checkPasswordStrength(a.password).score;
+          const scoreB = checkPasswordStrength(b.password).score;
+          return scoreA - scoreB;
+        }
+        case 'newest':
+        default:
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       }
-      case 'newest':
-      default:
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    }
-  });
+    });
+  }, [filteredAccounts, sortMode]);
 
   return (
     <SafeAreaView style={styles.container}>

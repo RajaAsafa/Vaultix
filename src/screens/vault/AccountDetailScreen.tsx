@@ -59,7 +59,7 @@ export const AccountDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         .then(setHistoryList)
         .catch(() => {});
     }
-  }, [account?.id, vek, getPasswordHistory]);
+  }, [account?.id, account?.updatedAt, vek, getPasswordHistory]);
 
   if (!account) {
     return (
