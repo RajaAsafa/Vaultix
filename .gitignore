@@ -1,45 +1,98 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# dependencies
+# --------------------------------------------------
+# 1. Dependencies & Package Managers
+# --------------------------------------------------
 node_modules/
+.pnpm-store/
+.yarn/cache/
+.yarn/unplugged/
 
-# AI / IDE tooling
+# --------------------------------------------------
+# 2. AI & Coding Assistants (Agar tidak muncul di GitHub)
+# --------------------------------------------------
 .claude/
 .gemini/
+.cursor/
+.windsurf/
+.chat/
 
-# Expo
+# --------------------------------------------------
+# 3. Security, Keys & Secrets (Sangat Penting untuk Password Manager)
+# --------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.keystore
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+credentials.json
+google-services.json
+
+# --------------------------------------------------
+# 4. Vaultix Local Database & Testing Backups
+# --------------------------------------------------
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.vaultix
+
+# --------------------------------------------------
+# 5. Expo & Metro Bundler
+# --------------------------------------------------
 .expo/
 dist/
 web-build/
 expo-env.d.ts
-
-# Native
-.kotlin/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-
-# Metro
 .metro-health-check*
 
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
+# --------------------------------------------------
+# 6. Generated Native Folders (Expo CNG) & Mobile Binaries
+# --------------------------------------------------
+/ios
+/android
+.kotlin/
+*.orig.*
+*.apk
+*.aab
+*.ipa
+
+# --------------------------------------------------
+# 7. IDE, Editors & OS Files
+# --------------------------------------------------
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+
+# Windows
+Thumbs.db
+ehthumbs.db
+desktop.ini
 
 # macOS
 .DS_Store
-*.pem
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
 
-# local env files
-.env*.local
-
-# typescript
+# --------------------------------------------------
+# 8. Logs & Diagnostics
+# --------------------------------------------------
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.log
+.eslintcache
 *.tsbuildinfo
-
-# generated native folders
-/ios
-/android
