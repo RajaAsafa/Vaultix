@@ -134,7 +134,7 @@ export const EditAccountScreen: React.FC<Props> = ({ navigation, route }) => {
           authType,
           username: username.trim() || undefined,
           email: email.trim() || undefined,
-          password: authType === 'password' ? password : (account.password || pin.trim()),
+          password: authType === 'password' ? password : undefined,
           pin: authType === 'pin' ? pin.trim() : undefined,
           categoryId,
           notes: notes.trim() || undefined,

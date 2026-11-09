@@ -52,34 +52,23 @@ export const VaultListScreen: React.FC = () => {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // In-memory search & filter
-  const filteredAccounts = accounts.filter((account) => {
-    // Favorites filter
-    if (favoritesOnly && !account.isFavorite) {
-      return false;
-    }
-
-    // Category filter
-    if (selectedCategory && account.categoryId !== selectedCategory) {
-      return false;
-    }
-
-    // Text search filter (Account Name, Username, Email) - NO URL!
-    if (searchQuery.trim().length > 0) {
-      const q = searchQuery.toLowerCase();
-      const matchName = account.accountName.toLowerCase().includes(q);
-      const matchUsername = account.username?.toLowerCase().includes(q) ?? false;
-      const matchEmail = account.email?.toLowerCase().includes(q) ?? false;
-
-      return matchName || matchUsername || matchEmail;
-    }
-
-    return true;
-  });
-
-  // Dynamic In-Memory Sorting
+  // In-memory search, filter & sort memoized together
   const sortedAccounts = useMemo(() => {
-    return [...filteredAccounts].sort((a, b) => {
+    const filtered = accounts.filter((account) => {
+      if (favoritesOnly && !account.isFavorite) return false;
+      if (selectedCategory && account.categoryId !== selectedCategory) return false;
+      if (searchQuery.trim().length > 0) {
+        const q = searchQuery.toLowerCase();
+        return (
+          account.accountName.toLowerCase().includes(q) ||
+          (account.username?.toLowerCase().includes(q) ?? false) ||
+          (account.email?.toLowerCase().includes(q) ?? false)
+        );
+      }
+      return true;
+    });
+
+    return filtered.sort((a, b) => {
       switch (sortMode) {
         case 'az':
           return a.accountName.localeCompare(b.accountName);
@@ -97,7 +86,7 @@ export const VaultListScreen: React.FC = () => {
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       }
     });
-  }, [filteredAccounts, sortMode]);
+  }, [accounts, favoritesOnly, selectedCategory, searchQuery, sortMode]);
 
   return (
     <SafeAreaView style={styles.container}>
