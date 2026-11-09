@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MainTabParamList, RootStackParamList } from '../../types';
 import { Colors, Spacing, BorderRadius, Typography } from '../../constants/theme';
 import { useVaultStore } from '../../store/vaultStore';
+import { SettingsRepository } from '../../database/repositories/SettingsRepository';
 import { VaultInput } from '../../components/VaultInput';
 import { AccountListItem } from '../../components/AccountListItem';
 
@@ -33,6 +34,13 @@ export const VaultListScreen: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [clipboardTimeout, setClipboardTimeout] = useState(30);
+
+  useEffect(() => {
+    SettingsRepository.getSettings()
+      .then((s) => setClipboardTimeout(s.clipboard_timeout))
+      .catch(() => {});
+  }, []);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -177,6 +185,7 @@ export const VaultListScreen: React.FC = () => {
             <AccountListItem
               account={item}
               category={category}
+              clipboardTimeout={clipboardTimeout}
               onCopiedToast={showToast}
               onPress={() => navigation.navigate('AccountDetail', { accountId: item.id })}
               onToggleFavorite={() => toggleFavorite(item.id)}

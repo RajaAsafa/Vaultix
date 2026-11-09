@@ -8,6 +8,7 @@ import { copyToClipboardWithAutoClear } from '../services/clipboardService';
 interface AccountListItemProps {
   account: DecryptedAccount;
   category?: DecryptedCategory;
+  clipboardTimeout?: number;
   onPress: () => void;
   onToggleFavorite: () => void;
   onCopiedToast?: (message: string) => void;
@@ -16,51 +17,53 @@ interface AccountListItemProps {
 export const AccountListItem: React.FC<AccountListItemProps> = ({
   account,
   category,
+  clipboardTimeout = 30,
   onPress,
   onToggleFavorite,
   onCopiedToast,
 }) => {
-  const handleCopyPassword = async (e: unknown) => {
-    // Prevent opening account detail when tapping copy icon
-    await copyToClipboardWithAutoClear(account.password, 30);
-    onCopiedToast?.('Password disalin! Otomatis dibersihkan dalam 30 detik.');
+  const handleCopyPassword = async () => {
+    await copyToClipboardWithAutoClear(account.password, clipboardTimeout);
+    onCopiedToast?.(`Password disalin! Dibersihkan dlm ${clipboardTimeout}d`);
   };
 
   const subtitle = account.username || account.email || 'Tanpa username/email';
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.7}
-      style={styles.container}
-      onPress={onPress}
-    >
-      <View style={styles.iconContainer}>
-        <Ionicons
-          color={Colors.accent}
-          name={(category?.icon as unknown as keyof typeof Ionicons.glyphMap) || 'key-outline'}
-          size={22}
-        />
-      </View>
-
-      <View style={styles.content}>
-        <View style={styles.titleRow}>
-          <Text numberOfLines={1} style={styles.accountName}>
-            {account.accountName}
-          </Text>
-          {category && (
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryText}>{category.name}</Text>
-            </View>
-          )}
+    <View style={styles.container}>
+      <TouchableOpacity
+        activeOpacity={0.7}
+        style={styles.touchableArea}
+        onPress={onPress}
+      >
+        <View style={styles.iconContainer}>
+          <Ionicons
+            color={Colors.accent}
+            name={(category?.icon as unknown as keyof typeof Ionicons.glyphMap) || 'key-outline'}
+            size={22}
+          />
         </View>
-        <Text numberOfLines={1} style={styles.subtitle}>
-          {subtitle}
-        </Text>
-      </View>
+
+        <View style={styles.content}>
+          <View style={styles.titleRow}>
+            <Text numberOfLines={1} style={styles.accountName}>
+              {account.accountName}
+            </Text>
+            {category && (
+              <View style={styles.categoryBadge}>
+                <Text style={styles.categoryText}>{category.name}</Text>
+              </View>
+            )}
+          </View>
+          <Text numberOfLines={1} style={styles.subtitle}>
+            {subtitle}
+          </Text>
+        </View>
+      </TouchableOpacity>
 
       <View style={styles.actions}>
         <TouchableOpacity
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
           style={styles.actionButton}
           onPress={handleCopyPassword}
         >
@@ -68,7 +71,7 @@ export const AccountListItem: React.FC<AccountListItemProps> = ({
         </TouchableOpacity>
 
         <TouchableOpacity
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
           style={styles.actionButton}
           onPress={onToggleFavorite}
         >
@@ -79,7 +82,7 @@ export const AccountListItem: React.FC<AccountListItemProps> = ({
           />
         </TouchableOpacity>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 };
 
@@ -88,11 +91,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.surface,
-    padding: Spacing.md,
+    padding: Spacing.sm,
+    paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.lg,
     borderWidth: 1,
     borderColor: Colors.border,
     marginBottom: Spacing.sm,
+  },
+  touchableArea: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.xs,
   },
   iconContainer: {
     width: 44,

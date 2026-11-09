@@ -85,9 +85,6 @@ export type RootStackParamList = {
   AddAccount: { categoryId?: string } | undefined;
   EditAccount: { accountId: string };
   AccountDetail: { accountId: string };
-  ManageCategories: undefined;
-  SecurityDashboard: undefined;
-  BackupRestore: undefined;
 };
 
 export type AuthStackParamList = {

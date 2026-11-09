@@ -8,6 +8,7 @@ import {
 } from '../security/keyManager';
 import { CategoryRepository } from '../database/repositories/CategoryRepository';
 import { runMigrations } from '../database/migrations';
+import { useVaultStore } from './vaultStore';
 
 interface AuthState {
   status: VaultStatus;
@@ -102,6 +103,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   lockVault: () => {
+    // Purge decrypted accounts from memory
+    useVaultStore.getState().clearMemory();
+
     // In-memory zeroing of VEK buffer for security
     set((state) => {
       if (state.vek) {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import { MainTabParamList, RootStackParamList } from '../../types';
 import { Colors, Spacing, BorderRadius, Typography } from '../../constants/theme';
 import { useVaultStore } from '../../store/vaultStore';
 import { checkPasswordStrength } from '../../security/generator';
+import { SettingsRepository } from '../../database/repositories/SettingsRepository';
 import { AccountListItem } from '../../components/AccountListItem';
 
 type NavigationProp = CompositeNavigationProp<
@@ -28,9 +29,16 @@ export const HomeScreen: React.FC = () => {
   const categories = useVaultStore((s) => s.categories);
   const toggleFavorite = useVaultStore((s) => s.toggleFavorite);
 
+  const [clipboardTimeout, setClipboardTimeout] = useState(30);
+
+  useEffect(() => {
+    SettingsRepository.getSettings()
+      .then((s) => setClipboardTimeout(s.clipboard_timeout))
+      .catch(() => {});
+  }, []);
+
   // Calculate statistics
   const totalAccounts = accounts.length;
-  const totalCategories = categories.length;
   const favoriteAccounts = accounts.filter((a) => a.isFavorite);
 
   // Audit passwords for weak and duplicates
@@ -168,6 +176,7 @@ export const HomeScreen: React.FC = () => {
                 key={account.id}
                 account={account}
                 category={category}
+                clipboardTimeout={clipboardTimeout}
                 onPress={() => navigation.navigate('AccountDetail', { accountId: account.id })}
                 onToggleFavorite={() => toggleFavorite(account.id)}
               />

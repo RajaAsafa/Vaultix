@@ -1,31 +1,52 @@
 import { useEffect, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { useAuthStore } from '../store/authStore';
-import { useVaultStore } from '../store/vaultStore';
+import { SettingsRepository } from '../database/repositories/SettingsRepository';
 
 export function useAutoLock(): void {
   const status = useAuthStore((s) => s.status);
   const lockVault = useAuthStore((s) => s.lockVault);
-  const clearMemory = useVaultStore((s) => s.clearMemory);
+
   const appState = useRef<AppStateStatus>((AppState.currentState ?? 'active') as AppStateStatus);
+  const backgroundTimestamp = useRef<number | null>(null);
 
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      // If moving from active to background/inactive, lock vault immediately
-      if (
-        appState.current === 'active' &&
-        (nextAppState === 'background' || nextAppState === 'inactive')
-      ) {
-        if (status === 'unlocked') {
-          clearMemory();
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
+      if (status !== 'unlocked') {
+        appState.current = nextAppState;
+        return;
+      }
+
+      const settings = await SettingsRepository.getSettings().catch(() => null);
+      const autoLockSeconds = settings?.auto_lock_duration ?? 60;
+
+      // When app goes to background
+      if (appState.current === 'active' && nextAppState === 'background') {
+        if (autoLockSeconds === 0) {
+          // 0 = Lock Immediately
           lockVault();
+        } else {
+          // Record background timestamp
+          backgroundTimestamp.current = Date.now();
         }
       }
+
+      // When app returns to active from background
+      if (appState.current === 'background' && nextAppState === 'active') {
+        if (backgroundTimestamp.current !== null) {
+          const elapsed = (Date.now() - backgroundTimestamp.current) / 1000;
+          if (elapsed >= autoLockSeconds) {
+            lockVault();
+          }
+          backgroundTimestamp.current = null;
+        }
+      }
+
       appState.current = nextAppState;
     });
 
     return () => {
       subscription.remove();
     };
-  }, [status, lockVault, clearMemory]);
+  }, [status, lockVault]);
 }

@@ -66,12 +66,14 @@ export class CategoryRepository {
     }
 
     const now = new Date().toISOString();
-    for (const item of DEFAULT_CATEGORIES) {
-      const nameEncrypted = await encryptAesGcm(item.name, vek);
-      await db.runAsync(
-        'INSERT INTO categories (id, name_encrypted, icon, created_at) VALUES (?, ?, ?, ?);',
-        [item.id, nameEncrypted, item.icon, now]
-      );
-    }
+    await db.withTransactionAsync(async () => {
+      for (const item of DEFAULT_CATEGORIES) {
+        const nameEncrypted = await encryptAesGcm(item.name, vek);
+        await db.runAsync(
+          'INSERT INTO categories (id, name_encrypted, icon, created_at) VALUES (?, ?, ?, ?);',
+          [item.id, nameEncrypted, item.icon, now]
+        );
+      }
+    });
   }
 }

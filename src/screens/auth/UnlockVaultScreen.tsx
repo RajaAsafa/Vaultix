@@ -7,6 +7,7 @@ import { Colors, Spacing, BorderRadius, Typography } from '../../constants/theme
 import { VaultInput } from '../../components/VaultInput';
 import { VaultButton } from '../../components/VaultButton';
 import { useAuthStore } from '../../store/authStore';
+import { SettingsRepository } from '../../database/repositories/SettingsRepository';
 
 export const UnlockVaultScreen: React.FC = () => {
   const [password, setPassword] = useState('');
@@ -20,13 +21,24 @@ export const UnlockVaultScreen: React.FC = () => {
 
   useEffect(() => {
     (async () => {
-      const compatible = await LocalAuthentication.hasHardwareAsync();
-      const enrolled = await LocalAuthentication.isEnrolledAsync();
-      setHasBiometrics(compatible && enrolled);
+      try {
+        const settings = await SettingsRepository.getSettings();
+        if (settings.biometric_enabled !== 1) {
+          setHasBiometrics(false);
+          return;
+        }
 
-      // Auto trigger biometric prompt if available
-      if (compatible && enrolled) {
-        handleBiometricUnlock();
+        const compatible = await LocalAuthentication.hasHardwareAsync();
+        const enrolled = await LocalAuthentication.isEnrolledAsync();
+        const canUseBiometrics = compatible && enrolled;
+        setHasBiometrics(canUseBiometrics);
+
+        // Auto trigger biometric prompt only if enabled by user and available
+        if (canUseBiometrics) {
+          handleBiometricUnlock();
+        }
+      } catch {
+        setHasBiometrics(false);
       }
     })();
   }, []);

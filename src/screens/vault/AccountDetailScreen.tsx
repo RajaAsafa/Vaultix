@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types';
 import { Colors, Spacing, BorderRadius, Typography } from '../../constants/theme';
 import { useVaultStore } from '../../store/vaultStore';
+import { SettingsRepository } from '../../database/repositories/SettingsRepository';
 import { copyToClipboardWithAutoClear } from '../../services/clipboardService';
 import { checkPasswordStrength } from '../../security/generator';
 import { VaultCard } from '../../components/VaultCard';
@@ -22,13 +23,27 @@ type Props = NativeStackScreenProps<RootStackParamList, 'AccountDetail'>;
 export const AccountDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { accountId } = route.params;
 
-  const account = useVaultStore((s) => s.accounts.find((a) => a.id === accountId));
+  const currentAccount = useVaultStore((s) => s.accounts.find((a) => a.id === accountId));
   const categories = useVaultStore((s) => s.categories);
   const toggleFavorite = useVaultStore((s) => s.toggleFavorite);
   const deleteAccount = useVaultStore((s) => s.deleteAccount);
 
+  // Retain account snapshot during delete transition
+  const cachedAccountRef = useRef(currentAccount);
+  if (currentAccount) {
+    cachedAccountRef.current = currentAccount;
+  }
+  const account = currentAccount ?? cachedAccountRef.current;
+
   const [showPassword, setShowPassword] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [clipboardTimeout, setClipboardTimeout] = useState(30);
+
+  useEffect(() => {
+    SettingsRepository.getSettings()
+      .then((s) => setClipboardTimeout(s.clipboard_timeout))
+      .catch(() => {});
+  }, []);
 
   if (!account) {
     return (
@@ -54,8 +69,8 @@ export const AccountDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handleCopy = async (text: string, label: string) => {
-    await copyToClipboardWithAutoClear(text, 30);
-    showToast(`${label} disalin! (Otomatis dibersihkan dlm 30d)`);
+    await copyToClipboardWithAutoClear(text, clipboardTimeout);
+    showToast(`${label} disalin! (Dibersihkan dlm ${clipboardTimeout}d)`);
   };
 
   const handleDelete = () => {
@@ -68,8 +83,10 @@ export const AccountDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           text: 'Hapus',
           style: 'destructive',
           onPress: async () => {
-            await deleteAccount(account.id);
             navigation.goBack();
+            setTimeout(async () => {
+              await deleteAccount(account.id);
+            }, 100);
           },
         },
       ]
