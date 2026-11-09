@@ -3,6 +3,10 @@
 # dependencies
 node_modules/
 
+# AI / IDE tooling
+.claude/
+.gemini/
+
 # Expo
 .expo/
 dist/
