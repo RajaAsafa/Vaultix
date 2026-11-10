@@ -12,8 +12,10 @@ export function useAutoLock(): void {
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', async (nextAppState) => {
+      const prevState = appState.current;
+      appState.current = nextAppState;
+
       if (status !== 'unlocked') {
-        appState.current = nextAppState;
         return;
       }
 
@@ -21,7 +23,7 @@ export function useAutoLock(): void {
       const autoLockSeconds = settings?.auto_lock_duration ?? 60;
 
       // When app moves to background (handles active -> inactive -> background on Android)
-      if (/active|inactive/.test(appState.current) && nextAppState === 'background') {
+      if (/active|inactive/.test(prevState) && nextAppState === 'background') {
         if (autoLockSeconds === 0) {
           // 0 = Lock Immediately
           lockVault();
@@ -32,7 +34,7 @@ export function useAutoLock(): void {
       }
 
       // When app returns to active from background
-      if (/background|inactive/.test(appState.current) && nextAppState === 'active') {
+      if (/background|inactive/.test(prevState) && nextAppState === 'active') {
         if (backgroundTimestamp.current !== null) {
           const elapsed = (Date.now() - backgroundTimestamp.current) / 1000;
           if (elapsed >= autoLockSeconds) {
@@ -41,8 +43,6 @@ export function useAutoLock(): void {
           backgroundTimestamp.current = null;
         }
       }
-
-      appState.current = nextAppState;
     });
 
     return () => {

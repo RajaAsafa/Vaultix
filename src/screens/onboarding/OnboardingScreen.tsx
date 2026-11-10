@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -13,18 +13,22 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <View style={styles.iconCircle}>
-          <Ionicons color={Colors.accent} name="shield-checkmark" size={64} />
+        <View style={styles.logoContainer}>
+          <Image
+            accessibilityLabel="Logo Vaultix"
+            source={require('../../../assets/icon.png')}
+            style={styles.logoImage}
+          />
         </View>
 
         <Text style={styles.title}>VAULTIX</Text>
-        <Text style={styles.tagline}>Your Digital Safe.</Text>
+        <Text style={styles.tagline}>Brankas Digital Pribadi Anda.</Text>
 
         <View style={styles.features}>
           <View style={styles.featureItem}>
             <Ionicons color={Colors.success} name="lock-closed" size={24} />
             <View style={styles.featureText}>
-              <Text style={styles.featureTitle}>Enkripsi Tingkat Militer</Text>
+              <Text style={styles.featureTitle}>Enkripsi Lokal AES-256</Text>
               <Text style={styles.featureDesc}>
                 Dilindungi AES-256-GCM dan KDF Argon2id langsung di perangkat Anda.
               </Text>
@@ -34,7 +38,7 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.featureItem}>
             <Ionicons color={Colors.accent} name="cloud-offline" size={24} />
             <View style={styles.featureText}>
-              <Text style={styles.featureTitle}>100% Offline & Local-First</Text>
+              <Text style={styles.featureTitle}>Penyimpanan Sepenuhnya Offline</Text>
               <Text style={styles.featureDesc}>
                 Tidak ada server eksternal atau database cloud. Data Anda tetap milik Anda.
               </Text>
@@ -75,16 +79,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconCircle: {
+  logoContainer: {
     width: 110,
     height: 110,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
+    borderRadius: BorderRadius.xl,
+    overflow: 'hidden',
+    borderWidth: 1.5,
     borderColor: Colors.border,
     marginBottom: Spacing.lg,
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
   },
   title: {
     color: Colors.textPrimary,

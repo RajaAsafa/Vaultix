@@ -91,12 +91,24 @@ export async function isVaultInitialized(): Promise<boolean> {
 }
 
 /**
+ * Checks whether Class 3 biometric authentication is available for SecureStore.
+ */
+export function isBiometricAuthenticationSupported(): boolean {
+  try {
+    return SecureStore.canUseBiometricAuthentication();
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Saves the VEK into SecureStore protected by Biometrics.
  */
 export async function enableBiometricUnlock(vek: Uint8Array): Promise<void> {
   const vekBase64 = uint8ArrayToBase64(vek);
   await SecureStore.setItemAsync(BIOMETRIC_KEY_ALIAS, vekBase64, {
     requireAuthentication: true,
+    authenticationPrompt: 'Konfirmasi biometrik untuk Vaultix',
   });
 }
 
@@ -113,6 +125,7 @@ export async function disableBiometricUnlock(): Promise<void> {
 export async function unlockVaultWithBiometrics(): Promise<Uint8Array> {
   const vekBase64 = await SecureStore.getItemAsync(BIOMETRIC_KEY_ALIAS, {
     requireAuthentication: true,
+    authenticationPrompt: 'Buka Vaultix dengan Biometrik',
   });
 
   if (!vekBase64) {

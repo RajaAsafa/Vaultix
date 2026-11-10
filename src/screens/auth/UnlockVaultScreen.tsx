@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { AppState, View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import { Colors, Spacing, BorderRadius, Typography } from '../../constants/theme';
 import { VaultInput } from '../../components/VaultInput';
 import { VaultButton } from '../../components/VaultButton';
 import { useAuthStore } from '../../store/authStore';
 import { SettingsRepository } from '../../database/repositories/SettingsRepository';
+import { isBiometricAuthenticationSupported } from '../../security/keyManager';
 
 export const UnlockVaultScreen: React.FC = () => {
   const [password, setPassword] = useState('');
@@ -20,10 +20,33 @@ export const UnlockVaultScreen: React.FC = () => {
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
 
+  const hasBiometricsRef = useRef(false);
+  const cooldownRef = useRef(0);
+  const isAuthenticatingRef = useRef(false);
+  const needsPromptOnForegroundRef = useRef(false);
+  const appStateRef = useRef(AppState.currentState);
+
   const unlockWithPassword = useAuthStore((s) => s.unlockWithPassword);
   const unlockWithBiometrics = useAuthStore((s) => s.unlockWithBiometrics);
   const errorMessage = useAuthStore((s) => s.errorMessage);
   const clearError = useAuthStore((s) => s.clearError);
+
+  useEffect(() => {
+    cooldownRef.current = cooldownSeconds;
+  }, [cooldownSeconds]);
+
+  const handleBiometricUnlock = useCallback(async () => {
+    if (isAuthenticatingRef.current || cooldownRef.current > 0 || !hasBiometricsRef.current) {
+      return;
+    }
+
+    isAuthenticatingRef.current = true;
+    try {
+      await unlockWithBiometrics();
+    } finally {
+      isAuthenticatingRef.current = false;
+    }
+  }, [unlockWithBiometrics]);
 
   // Cooldown countdown timer
   useEffect(() => {
@@ -45,7 +68,10 @@ export const UnlockVaultScreen: React.FC = () => {
   }, [cooldownSeconds]);
 
   useEffect(() => {
+    let mounted = true;
     (async () => {
+      let activeCooldown = 0;
+
       // Check persisted brute-force lockout
       try {
         const lockoutStr = await SecureStore.getItemAsync('vaultix_lockout_until');
@@ -53,35 +79,73 @@ export const UnlockVaultScreen: React.FC = () => {
           const lockoutUntil = parseInt(lockoutStr, 10);
           const remaining = Math.ceil((lockoutUntil - Date.now()) / 1000);
           if (remaining > 0) {
-            setCooldownSeconds(remaining);
-            setLocalError(`Keamanan aktif: Silakan tunggu ${remaining} detik`);
+            activeCooldown = remaining;
+            if (mounted) {
+              cooldownRef.current = remaining;
+              setCooldownSeconds(remaining);
+              setLocalError(`Keamanan aktif: Silakan tunggu ${remaining} detik`);
+            }
           } else {
             await SecureStore.deleteItemAsync('vaultix_lockout_until').catch(() => {});
           }
         }
       } catch {}
 
+      if (!mounted) return;
+
       try {
         const settings = await SettingsRepository.getSettings();
-        if (settings.biometric_enabled !== 1) {
-          setHasBiometrics(false);
-          return;
-        }
+        if (!mounted) return;
 
-        const compatible = await LocalAuthentication.hasHardwareAsync();
-        const enrolled = await LocalAuthentication.isEnrolledAsync();
-        const canUseBiometrics = compatible && enrolled;
+        const canUseBiometrics =
+          settings.biometric_enabled === 1 && isBiometricAuthenticationSupported();
+        hasBiometricsRef.current = canUseBiometrics;
         setHasBiometrics(canUseBiometrics);
 
-        // Auto trigger biometric prompt only if enabled by user and available
-        if (canUseBiometrics) {
-          handleBiometricUnlock();
+        // Auto trigger 1x only when active in foreground; defer if locking during background/close
+        if (canUseBiometrics && activeCooldown === 0) {
+          if (AppState.currentState === 'active') {
+            handleBiometricUnlock();
+          } else {
+            needsPromptOnForegroundRef.current = true;
+          }
         }
       } catch {
-        setHasBiometrics(false);
+        if (mounted) {
+          hasBiometricsRef.current = false;
+          setHasBiometrics(false);
+        }
       }
     })();
-  }, []);
+
+    return () => {
+      mounted = false;
+    };
+  }, [handleBiometricUnlock]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      const prevState = appStateRef.current;
+      appStateRef.current = nextState;
+
+      if (nextState === 'background') {
+        needsPromptOnForegroundRef.current = true;
+        return;
+      }
+
+      if (
+        nextState === 'active' &&
+        (prevState === 'background' || needsPromptOnForegroundRef.current)
+      ) {
+        needsPromptOnForegroundRef.current = false;
+        if (hasBiometricsRef.current && cooldownRef.current === 0) {
+          handleBiometricUnlock();
+        }
+      }
+    });
+
+    return () => subscription.remove();
+  }, [handleBiometricUnlock]);
 
   const handlePasswordUnlock = async () => {
     if (cooldownSeconds > 0) {
@@ -125,26 +189,15 @@ export const UnlockVaultScreen: React.FC = () => {
     }
   };
 
-  const handleBiometricUnlock = async () => {
-    try {
-      const authResult = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Buka Vaultix dengan Biometrik',
-        fallbackLabel: 'Gunakan Master Password',
-      });
-
-      if (authResult.success) {
-        await unlockWithBiometrics();
-      }
-    } catch {
-      // Biometric failed or cancelled, user can use password
-    }
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <View style={styles.iconCircle}>
-          <Ionicons color={Colors.accent} name="lock-closed" size={56} />
+        <View style={styles.logoContainer}>
+          <Image
+            accessibilityLabel="Logo Vaultix"
+            source={require('../../../assets/icon.png')}
+            style={styles.logoImage}
+          />
         </View>
 
         <Text style={styles.title}>Vault Terkunci</Text>
@@ -205,16 +258,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: Spacing.lg,
   },
-  iconCircle: {
+  logoContainer: {
     width: 96,
     height: 96,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
+    borderRadius: BorderRadius.xl,
+    overflow: 'hidden',
+    borderWidth: 1.5,
     borderColor: Colors.border,
     marginBottom: Spacing.lg,
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
   },
   title: {
     color: Colors.textPrimary,

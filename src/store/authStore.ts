@@ -95,8 +95,12 @@ export const useAuthStore = create<AuthState>((set) => ({
       });
       return true;
     } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '';
+      const isCanceled = /cancel/i.test(msg);
       set({
-        errorMessage: err instanceof Error ? err.message : 'Autentikasi biometrik gagal',
+        errorMessage: isCanceled
+          ? null
+          : 'Autentikasi biometrik gagal. Gunakan Master Password.',
       });
       return false;
     }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as LocalAuthentication from 'expo-local-authentication';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types';
@@ -18,7 +17,11 @@ import { Colors, Spacing, BorderRadius, Typography } from '../../constants/theme
 import { useAuthStore } from '../../store/authStore';
 import { useVaultStore } from '../../store/vaultStore';
 import { SettingsRepository } from '../../database/repositories/SettingsRepository';
-import { enableBiometricUnlock, disableBiometricUnlock } from '../../security/keyManager';
+import {
+  enableBiometricUnlock,
+  disableBiometricUnlock,
+  isBiometricAuthenticationSupported,
+} from '../../security/keyManager';
 import { VaultCard } from '../../components/VaultCard';
 
 export const SettingsScreen: React.FC = () => {
@@ -30,6 +33,7 @@ export const SettingsScreen: React.FC = () => {
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [autoLockDuration, setAutoLockDuration] = useState(60);
   const [clipboardTimeout, setClipboardTimeout] = useState(30);
+  const isTogglingBiometricRef = useRef(false);
 
   useEffect(() => {
     (async () => {
@@ -41,14 +45,13 @@ export const SettingsScreen: React.FC = () => {
   }, []);
 
   const handleToggleBiometric = async (value: boolean) => {
-    if (value) {
-      const compatible = await LocalAuthentication.hasHardwareAsync();
-      const enrolled = await LocalAuthentication.isEnrolledAsync();
+    if (isTogglingBiometricRef.current) return;
 
-      if (!compatible || !enrolled) {
+    if (value) {
+      if (!isBiometricAuthenticationSupported()) {
         Alert.alert(
           'Tidak Didukung',
-          'Perangkat Anda belum mengonfigurasi sidik jari atau biometrik.'
+          'Perangkat Anda belum mengonfigurasi biometrik yang memenuhi standar keamanan.'
         );
         return;
       }
@@ -58,23 +61,28 @@ export const SettingsScreen: React.FC = () => {
         return;
       }
 
+      isTogglingBiometricRef.current = true;
       try {
-        const auth = await LocalAuthentication.authenticateAsync({
-          promptMessage: 'Konfirmasi biometrik untuk Vaultix',
-        });
-
-        if (auth.success) {
-          await enableBiometricUnlock(vek);
-          await SettingsRepository.updateSettings({ biometric_enabled: 1 });
-          setBiometricEnabled(true);
-        }
+        await enableBiometricUnlock(vek);
+        await SettingsRepository.updateSettings({ biometric_enabled: 1 });
+        setBiometricEnabled(true);
       } catch (err: unknown) {
-        Alert.alert('Gagal', 'Gagal mengaktifkan biometrik: ' + (err instanceof Error ? err.message : ''));
+        const msg = err instanceof Error ? err.message : '';
+        if (!/cancel/i.test(msg)) {
+          Alert.alert('Gagal', 'Gagal mengaktifkan biometrik: ' + msg);
+        }
+      } finally {
+        isTogglingBiometricRef.current = false;
       }
     } else {
-      await disableBiometricUnlock();
-      await SettingsRepository.updateSettings({ biometric_enabled: 0 });
-      setBiometricEnabled(false);
+      isTogglingBiometricRef.current = true;
+      try {
+        await disableBiometricUnlock();
+        await SettingsRepository.updateSettings({ biometric_enabled: 0 });
+        setBiometricEnabled(false);
+      } finally {
+        isTogglingBiometricRef.current = false;
+      }
     }
   };
 
@@ -183,18 +191,8 @@ export const SettingsScreen: React.FC = () => {
         <Text style={styles.sectionTitle}>Tentang Aplikasi</Text>
         <VaultCard>
           <View style={styles.settingRow}>
-            <Text style={styles.settingName}>Nama Aplikasi</Text>
-            <Text style={styles.valueText}>Vaultix</Text>
-          </View>
-          <View style={styles.divider} />
-          <View style={styles.settingRow}>
-            <Text style={styles.settingName}>Versi PRD</Text>
-            <Text style={styles.valueText}>1.2 (Offline Safe)</Text>
-          </View>
-          <View style={styles.divider} />
-          <View style={styles.settingRow}>
-            <Text style={styles.settingName}>Arsitektur</Text>
-            <Text style={styles.valueText}>Local-First SQLite</Text>
+            <Text style={styles.settingName}>Versi</Text>
+            <Text style={styles.valueText}>1.0.0</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.settingRow}>

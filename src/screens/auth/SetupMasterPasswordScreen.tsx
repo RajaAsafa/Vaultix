@@ -138,7 +138,7 @@ export const SetupMasterPasswordScreen: React.FC<Props> = () => {
                 />
               </View>
               <Text style={[styles.strengthText, { color: getStrengthColor() }]}>
-                Kekuatan: {strength.level}
+                Kekuatan: {strength.label}
               </Text>
             </View>
           )}

@@ -39,7 +39,7 @@ export const GeneratorScreen: React.FC = () => {
 
   const handleCopy = async () => {
     await copyToClipboardWithAutoClear(password, 30);
-    showToast('Password disalin! (Otomatis dibersihkan dlm 30d)');
+    showToast('Password disalin! (Otomatis dibersihkan dalam 30 detik)');
   };
 
   const adjustLength = (delta: number) => {
@@ -96,7 +96,7 @@ export const GeneratorScreen: React.FC = () => {
                 ]}
               />
             </View>
-            <Text style={styles.strengthLabel}>{strength.level}</Text>
+            <Text style={styles.strengthLabel}>{strength.label}</Text>
           </View>
         </VaultCard>
 

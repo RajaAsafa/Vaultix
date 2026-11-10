@@ -44,7 +44,7 @@ export const TabNavigator: React.FC = () => {
         component={HomeScreen}
         name="HomeTab"
         options={{
-          tabBarLabel: 'Home',
+          tabBarLabel: 'Beranda',
           tabBarIcon: ({ color, size }) => (
             <Ionicons color={color} name="home-outline" size={size} />
           ),
@@ -54,7 +54,7 @@ export const TabNavigator: React.FC = () => {
         component={VaultListScreen}
         name="VaultTab"
         options={{
-          tabBarLabel: 'Vault',
+          tabBarLabel: 'Brankas',
           tabBarIcon: ({ color, size }) => (
             <Ionicons color={color} name="shield-outline" size={size} />
           ),
@@ -74,7 +74,7 @@ export const TabNavigator: React.FC = () => {
         component={SecurityDashboardScreen}
         name="SecurityTab"
         options={{
-          tabBarLabel: 'Security',
+          tabBarLabel: 'Keamanan',
           tabBarIcon: ({ color, size }) => (
             <Ionicons color={color} name="analytics-outline" size={size} />
           ),
@@ -84,7 +84,7 @@ export const TabNavigator: React.FC = () => {
         component={SettingsScreen}
         name="SettingsTab"
         options={{
-          tabBarLabel: 'Settings',
+          tabBarLabel: 'Pengaturan',
           tabBarIcon: ({ color, size }) => (
             <Ionicons color={color} name="settings-outline" size={size} />
           ),

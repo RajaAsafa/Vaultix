@@ -16,6 +16,7 @@ node_modules/
 .cursor/
 .windsurf/
 .chat/
+anti-slop/
 
 # --------------------------------------------------
 # 3. Security, Keys & Secrets (Sangat Penting untuk Password Manager)

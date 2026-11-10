@@ -295,7 +295,7 @@ export const AddAccountScreen: React.FC<Props> = ({ navigation, route }) => {
                             : Colors.error,
                       }}
                     >
-                      {strength.level}
+                      {strength.label}
                     </Text>
                   </Text>
                 </View>

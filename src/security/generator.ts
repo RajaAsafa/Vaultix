@@ -115,13 +115,25 @@ function shuffleArray(array: string[]): string[] {
   return shuffled;
 }
 
+const STRENGTH_LABELS: Record<PasswordStrengthLevel, string> = {
+  Weak: 'Lemah',
+  Medium: 'Sedang',
+  Strong: 'Kuat',
+  'Very Strong': 'Sangat Kuat',
+};
+
 /**
  * Analyzes password strength locally without sending data externally.
  * Evaluates length, character diversity, and repetitions.
  */
 export function checkPasswordStrength(password: string): PasswordStrengthResult {
   if (!password || password.length === 0) {
-    return { score: 0, level: 'Weak', feedback: ['Password tidak boleh kosong'] };
+    return {
+      score: 0,
+      level: 'Weak',
+      label: STRENGTH_LABELS.Weak,
+      feedback: ['Password tidak boleh kosong'],
+    };
   }
 
   let score = 0;
@@ -178,5 +190,5 @@ export function checkPasswordStrength(password: string): PasswordStrengthResult 
     level = 'Weak';
   }
 
-  return { score, level, feedback };
+  return { score, level, label: STRENGTH_LABELS[level], feedback };
 }

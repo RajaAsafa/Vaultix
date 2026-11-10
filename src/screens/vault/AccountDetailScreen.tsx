@@ -86,7 +86,7 @@ export const AccountDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const handleCopy = async (text: string, label: string) => {
     await copyToClipboardWithAutoClear(text, clipboardTimeout);
-    showToast(`${label} disalin! (Dibersihkan dlm ${clipboardTimeout}d)`);
+    showToast(`${label} disalin! (Dibersihkan dalam ${clipboardTimeout} detik)`);
   };
 
   const handleDelete = () => {
@@ -196,7 +196,7 @@ export const AccountDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Credential Card: Password OR PIN */}
         {account.authType === 'pin' ? (
           <VaultCard>
-            <Text style={styles.fieldLabel}>PIN KEAMANAN</Text>
+            <Text style={styles.fieldLabel}>PIN Keamanan</Text>
             <View style={styles.fieldRow}>
               <Text style={[styles.fieldValue, !showPassword && styles.passwordMasked]}>
                 {showPassword ? (account.pin || account.password) : '••••••••'}
@@ -264,7 +264,7 @@ export const AccountDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                     fontSize: Typography.sizes.xs,
                   }}
                 >
-                  {strength.level}
+                  {strength.label}
                 </Text>
               </View>
             ) : null}

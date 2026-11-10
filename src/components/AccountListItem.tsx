@@ -27,7 +27,7 @@ export const AccountListItem: React.FC<AccountListItemProps> = ({
 
   const handleCopySecret = async () => {
     await copyToClipboardWithAutoClear(secretToCopy, clipboardTimeout);
-    onCopiedToast?.(`${isPin ? 'PIN' : 'Password'} disalin! Dibersihkan dlm ${clipboardTimeout}d`);
+    onCopiedToast?.(`${isPin ? 'PIN' : 'Password'} disalin! Dibersihkan dalam ${clipboardTimeout} detik`);
   };
 
   const subtitle = account.username || account.email || 'Tanpa username/email';

@@ -93,6 +93,7 @@ export type PasswordStrengthLevel = 'Weak' | 'Medium' | 'Strong' | 'Very Strong'
 export interface PasswordStrengthResult {
   score: number; // 0 to 4
   level: PasswordStrengthLevel;
+  label: string;
   feedback: string[];
 }
 

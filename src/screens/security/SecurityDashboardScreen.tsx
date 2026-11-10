@@ -84,7 +84,7 @@ export const SecurityDashboardScreen: React.FC = () => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Security Dashboard</Text>
+        <Text style={styles.headerTitle}>Audit Keamanan</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>

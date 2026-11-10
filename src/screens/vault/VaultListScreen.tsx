@@ -92,7 +92,7 @@ export const VaultListScreen: React.FC = () => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Vault</Text>
+        <Text style={styles.headerTitle}>Brankas Saya</Text>
         <TouchableOpacity
           style={styles.addIconBtn}
           onPress={() => navigation.navigate('AddAccount')}
